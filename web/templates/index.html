@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>IESH Live Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; padding: 16px; }
+        h1 { font-size: 1.2rem; color: #58a6ff; margin-bottom: 4px; }
+        #status { font-size: 0.75rem; color: #8b949e; margin-bottom: 16px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; text-align: center; }
+        .card h3 { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .val { font-size: 1.8rem; font-weight: 700; }
+        .unit { font-size: 0.8rem; color: #8b949e; }
+        .green  { color: #3fb950; }
+        .blue   { color: #58a6ff; }
+        .yellow { color: #d29922; }
+        .orange { color: #f0883e; }
+        .red    { color: #f85149; }
+        .chart-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .chart-wrap h3 { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        canvas { max-height: 200px; }
+        #upload-status { font-size: 0.75rem; color: #8b949e; text-align: right; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>IESH — Integrated Environmental Smart Hub</h1>
+    <div id="status">Connecting...</div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Air Temp</h3>
+            <div class="val green" id="air_temp">--</div>
+            <div class="unit">°C</div>
+        </div>
+        <div class="card">
+            <h3>Humidity</h3>
+            <div class="val blue" id="air_hum">--</div>
+            <div class="unit">%</div>
+        </div>
+        <div class="card">
+            <h3>Pressure</h3>
+            <div class="val blue" id="pressure">--</div>
+            <div class="unit">hPa</div>
+        </div>
+        <div class="card">
+            <h3>Soil Temp</h3>
+            <div class="val yellow" id="soil_temp">--</div>
+            <div class="unit">°C</div>
+        </div>
+        <div class="card">
+            <h3>Soil Moisture</h3>
+            <div class="val green" id="soil_moist">--</div>
+            <div class="unit">%</div>
+        </div>
+        <div class="card">
+            <h3>CO (MQ-7)</h3>
+            <div class="val orange" id="mq7">--</div>
+            <div class="unit">raw ADC</div>
+        </div>
+        <div class="card">
+            <h3>AQI (MQ-135)</h3>
+            <div class="val red" id="mq135">--</div>
+            <div class="unit">raw ADC</div>
+        </div>
+    </div>
+
+    <div class="chart-wrap">
+        <h3>Temperature History</h3>
+        <canvas id="tempChart"></canvas>
+    </div>
+    <div class="chart-wrap">
+        <h3>Soil Moisture & Pressure History</h3>
+        <canvas id="soilChart"></canvas>
+    </div>
+    <div class="chart-wrap">
+        <h3>Gas Sensor History (raw ADC)</h3>
+        <canvas id="gasChart"></canvas>
+    </div>
+
+    <div id="upload-status"></div>
+
+    <script>
+    const COLORS = {
+        air:   '#3fb950', soil: '#d29922', pressure: '#58a6ff',
+        hum:   '#79c0ff', mq7:  '#f0883e', mq135:    '#f85149'
+    };
+
+    let charts = {};
+
+    function makeChart(id, datasets) {
+        const ctx = document.getElementById(id).getContext('2d');
+        charts[id] = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: datasets.map(d => ({
+                ...d, data: [], tension: 0.3, pointRadius: 2,
+                borderWidth: 1.5, fill: false
+            }))},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#8b949e', boxWidth: 12 }}},
+                scales: {
+                    x: { ticks: { color: '#8b949e', maxTicksLimit: 10 }, grid: { color: '#21262d' }},
+                    y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' }}
+                }
+            }
+        });
+        return charts[id];
+    }
+
+    makeChart('tempChart',  [
+        { label: 'Air Temp (°C)',  borderColor: COLORS.air },
+        { label: 'Soil Temp (°C)', borderColor: COLORS.soil },
+    ]);
+    makeChart('soilChart', [
+        { label: 'Soil Moisture (%)', borderColor: COLORS.soil },
+        { label: 'Humidity (%)',      borderColor: COLORS.hum, yAxisID: 'y' },
+    ]);
+    makeChart('gasChart',  [
+        { label: 'CO MQ-7 (raw)',   borderColor: COLORS.mq7 },
+        { label: 'AQI MQ-135 (raw)', borderColor: COLORS.mq135 },
+    ]);
+
+    function fmt(v, dp=1) { return v != null ? Number(v).toFixed(dp) : '--'; }
+
+    function updateCards(latest) {
+        if (!latest) return;
+        document.getElementById('air_temp').textContent  = fmt(latest.air_temp);
+        document.getElementById('air_hum').textContent   = fmt(latest.air_hum);
+        document.getElementById('pressure').textContent  = fmt(latest.pressure);
+        document.getElementById('soil_temp').textContent = fmt(latest.soil_temp);
+        document.getElementById('soil_moist').textContent= fmt(latest.soil_moist);
+        document.getElementById('mq7').textContent       = latest.mq7_raw   ?? '--';
+        document.getElementById('mq135').textContent     = latest.mq135_raw ?? '--';
+    }
+
+    function updateCharts(history) {
+        const labels = history.map(r => {
+            const d = new Date(r.timestamp);
+            return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+        });
+
+        const c1 = charts['tempChart'];
+        c1.data.labels                = labels;
+        c1.data.datasets[0].data      = history.map(r => r.air_temp);
+        c1.data.datasets[1].data      = history.map(r => r.soil_temp);
+        c1.update('none');
+
+        const c2 = charts['soilChart'];
+        c2.data.labels                = labels;
+        c2.data.datasets[0].data      = history.map(r => r.soil_moist);
+        c2.data.datasets[1].data      = history.map(r => r.air_hum);
+        c2.update('none');
+
+        const c3 = charts['gasChart'];
+        c3.data.labels                = labels;
+        c3.data.datasets[0].data      = history.map(r => r.mq7_raw);
+        c3.data.datasets[1].data      = history.map(r => r.mq135_raw);
+        c3.update('none');
+    }
+
+    async function poll() {
+        try {
+            const res  = await fetch('/api/data');
+            const data = await res.json();
+            updateCards(data.latest);
+            updateCharts(data.history);
+            const ts = data.latest?.timestamp ?? 'no data yet';
+            document.getElementById('status').textContent = `Last reading: ${ts} — refreshes every 15s`;
+        } catch (e) {
+            document.getElementById('status').textContent = `Connection error: ${e}`;
+        }
+    }
+
+    poll();
+    setInterval(poll, 15000);
+    </script>
+</body>
+</html>
