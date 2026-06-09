@@ -7,7 +7,7 @@ DS18B20_BASE_DIR = '/sys/bus/w1/devices/'
 
 # ── I2C Addresses ──────────────────────────────────────────
 I2C_BUS     = 1
-BMP280_ADDR = 0x77   # 0x76 if SDO pulled to GND, 0x77 if SDO pulled to 3.3V
+BMP280_ADDR = 0x76
 OLED_ADDR   = 0x3C
 RTC_ADDR    = 0x68   # DS3231
 
