@@ -1,0 +1,14 @@
+[Unit]
+Description=HICS Core Dashboard (OLED + Sensor Loop)
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pawan
+WorkingDirectory=/home/pawan
+ExecStart=/usr/bin/python3 /home/pawan/core_dash.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
