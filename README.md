@@ -1,6 +1,6 @@
 # HICS IESH v0.1
 
-**Himalayan Integrated Climate Station — Integrated Environmental Smart Hub**
+**Himalayan Institute for Contextual Sciences — Integrated Environmental Smart Hub**
 
 An offline-capable environmental monitoring station built on Raspberry Pi. Collects live atmospheric, air quality, and soil data; streams it to a web dashboard; and delivers Nepal CDC-aligned science activities for Grades 6–Undergraduate.
 
@@ -325,4 +325,4 @@ Grade 6–8 activities include live sensor visualizations (horizontal gauges, ba
 
 ---
 
-*Built for IESH Nepal — Integrated Environmental Science Hub*
+*Built by [HICS — Himalayan Institute for Contextual Sciences](https://himalayansciences.org)*
