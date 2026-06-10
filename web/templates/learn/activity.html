@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ activity.title }} — HICS Learning</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
+
+.breadcrumb{padding:.65rem 1.5rem;font-size:.78rem;color:#6070a8;border-bottom:1px solid #1e2235}
+.breadcrumb a{color:#5070a8;text-decoration:none}.breadcrumb a:hover{color:#7eb8ff}
+.breadcrumb span{margin:0 .4rem}
+
+/* Hero */
+.hero{padding:1.6rem 1.5rem 1.4rem;border-bottom:1px solid #1e2235;background:#141728}
+.hero-inner{max-width:1160px;margin:0 auto}
+.act-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.85rem}
+.badge{border-radius:6px;padding:.25rem .6rem;font-size:.7rem;font-weight:600;border:1px solid}
+.b-grade{background:rgba(126,184,255,.1);border-color:rgba(126,184,255,.25);color:#7eb8ff}
+.b-type{background:rgba(94,184,94,.08);border-color:rgba(94,184,94,.2);color:#5eb85e}
+.b-dur{background:rgba(255,255,255,.04);border-color:#2a2f55;color:#8090b8}
+.b-sub{background:rgba(255,255,255,.04);border-color:#2a2f55;color:#a0a8c8}
+.act-title{font-size:1.55rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-.02em}
+.act-subtitle{color:#a0a8c8;font-size:.9rem;line-height:1.5}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:1fr 290px;gap:1.5rem;padding:1.5rem;max-width:1160px;margin:0 auto;align-items:start}
+
+/* Content */
+.content{display:flex;flex-direction:column;gap:1.25rem}
+.s-box{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1.25rem}
+.s-box h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:#5060a0;margin-bottom:.9rem}
+.s-box p,.s-box li{font-size:.86rem;line-height:1.72;color:#c0c8e0}
+.s-box ul,.s-box ol{padding-left:1.3rem;display:flex;flex-direction:column;gap:.4rem}
+
+.overview{font-size:.9rem;line-height:1.7;color:#d0d8f0}
+
+.nepal-box{background:#0d1a16;border:1px solid #1c3c2c;border-radius:8px;padding:1rem;margin-top:.9rem}
+.nepal-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#3eb87a;margin-bottom:.45rem}
+.nepal-box p{font-size:.83rem;color:#a0ccb4;line-height:1.65}
+
+.bg-para{font-size:.85rem;line-height:1.75;color:#c0c8e0;margin-bottom:.7rem}
+.bg-para:last-child{margin-bottom:0}
+
+/* Procedure checklist */
+.procedure-list{display:flex;flex-direction:column;gap:.5rem;list-style:none;padding:0}
+.proc-item{display:flex;gap:.85rem;align-items:flex-start}
+.proc-check{
+  appearance:none;-webkit-appearance:none;width:20px;height:20px;min-width:20px;
+  border:2px solid #2a2f55;border-radius:5px;cursor:pointer;margin-top:.15rem;
+  background:transparent;transition:background .15s,border-color .15s;flex-shrink:0
+}
+.proc-check:checked{background:#3eb87a;border-color:#3eb87a}
+.proc-check:focus-visible{outline:2px solid #58a6ff;outline-offset:2px}
+.proc-text{font-size:.86rem;line-height:1.65;color:#c0c8e0;transition:color .15s}
+.proc-item:has(.proc-check:checked) .proc-text{color:#4a5270;text-decoration:line-through}
+.proc-num{
+  min-width:22px;height:22px;border-radius:50%;
+  background:rgba(126,184,255,.12);color:#7eb8ff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:700;margin-top:.15rem;flex-shrink:0
+}
+
+/* Discussion questions */
+.dq-item{font-size:.86rem;color:#c0c8e0;line-height:1.65;padding:.55rem 0;border-bottom:1px solid #1a1f35;display:flex;gap:.65rem}
+.dq-item:last-child{border-bottom:none}
+.dq-num{color:#5070a8;font-size:.75rem;min-width:1.5rem;margin-top:.1rem;flex-shrink:0}
+
+/* Worksheet */
+.wq{border:1px solid #1e2235;border-radius:8px;overflow:hidden;margin-bottom:.65rem}
+.wq:last-child{margin-bottom:0}
+.wq-q{font-size:.87rem;font-weight:600;color:#e0e8ff;padding:.85rem 1rem .7rem}
+.wq-guide-toggle{
+  width:100%;background:#0e1420;border:none;border-top:1px solid #1e2235;
+  text-align:left;padding:.6rem 1rem;cursor:pointer;
+  font-size:.78rem;color:#5070a8;display:flex;justify-content:space-between;align-items:center;
+  transition:background .15s
+}
+.wq-guide-toggle:hover{background:#131a2a;color:#7eb8ff}
+.wq-guide-toggle:focus-visible{outline:2px solid #58a6ff;outline-offset:-2px}
+.wq-guide-body{display:none;padding:.75rem 1rem;background:#0e1420;border-top:1px solid #1e2235;font-size:.82rem;color:#8090b8;line-height:1.65}
+.wq-guide-body.is-open{display:block}
+.wq-marks{font-size:.72rem;color:#404870;padding:.4rem 1rem .6rem;background:#0e1420}
+
+/* Vocabulary */
+.vocab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.7rem}
+.vocab-card{background:#0e1420;border:1px solid #1e2235;border-radius:8px;padding:.85rem}
+.vocab-term{font-weight:700;color:#e0e8ff;font-size:.85rem;margin-bottom:.3rem}
+.vocab-def{font-size:.79rem;color:#8090b8;line-height:1.6}
+
+/* SDG / links */
+.sdg-pill{display:inline-block;background:#141e30;border:1px solid #2a3555;border-radius:4px;padding:.2rem .6rem;font-size:.7rem;color:#5a80b8;margin:.2rem}
+
+/* Extension */
+.ext-box{background:#0d1420;border:1px solid #1e2235;border-radius:8px;padding:1rem}
+.ext-box p{font-size:.83rem;color:#8090b8;line-height:1.65}
+
+/* ── Visualizations ── */
+.viz-title{font-size:.83rem;color:#c0c8e0;margin-bottom:1.1rem;line-height:1.55}
+
+/* Horizontal colour-zone gauges */
+.hz-gauge{margin-bottom:1.3rem}
+.hz-gauge:last-child{margin-bottom:0}
+.hz-gauge-label{font-size:.79rem;font-weight:700;color:#7eb8ff;margin-bottom:.45rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.25rem}
+.hz-gauge-val{color:#e0e8ff;font-variant-numeric:tabular-nums}
+.hz-gauge-track{position:relative;height:28px;border-radius:7px;overflow:hidden;display:flex}
+.hz-zone{display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:rgba(0,0,0,.55);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;min-width:0;flex-shrink:0;padding:0 3px}
+.hz-needle{position:absolute;top:-3px;bottom:-3px;width:4px;background:#fff;border-radius:2px;box-shadow:0 0 8px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.3);transform:translateX(-50%);transition:left .7s cubic-bezier(.25,.8,.25,1);z-index:2;pointer-events:none}
+.hz-fact{font-size:.73rem;color:#4a5890;margin-top:.38rem;font-style:italic;line-height:1.45}
+
+/* Data bar chart */
+.db-row{display:grid;grid-template-columns:110px 1fr 60px;align-items:center;gap:.5rem .65rem;margin-bottom:.65rem}
+.db-row:last-child{margin-bottom:0}
+.db-label{font-size:.78rem;color:#8090b8;line-height:1.3}
+.db-track{background:#131a2a;border-radius:5px;height:22px;overflow:hidden;border:1px solid #1e2235}
+.db-fill{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.25,.8,.25,1);min-width:0;display:flex;align-items:center;padding-left:7px}
+.db-fill-label{font-size:.7rem;color:rgba(255,255,255,.85);font-weight:700;white-space:nowrap}
+.db-unit{font-size:.71rem;color:#404870;text-align:left}
+.db-note{font-size:.73rem;color:#4a5890;font-style:italic;margin-top:.8rem;line-height:1.45}
+
+/* Altitude zones */
+.alt-zones{border-radius:10px;overflow:hidden;border:1px solid #1e2235}
+.alt-zone{padding:.9rem 1rem;display:flex;align-items:flex-start;gap:.75rem;border-bottom:1px solid rgba(0,0,0,.25)}
+.alt-zone:last-child{border-bottom:none}
+.alt-zone-emoji{font-size:1.5rem;line-height:1;flex-shrink:0;margin-top:.1rem}
+.alt-zone-body{flex:1;min-width:0}
+.alt-zone-name{font-size:.9rem;font-weight:700;color:#e0e8ff;margin-bottom:.2rem}
+.alt-zone-meta{font-size:.74rem;color:#8090b8;line-height:1.5}
+.alt-zone-desc{font-size:.74rem;color:#6070a8;margin-top:.15rem;line-height:1.4}
+.alt-marker{
+  flex-shrink:0;border:2px solid #ffd700;border-radius:7px;
+  padding:.25rem .65rem;font-size:.73rem;color:#ffd700;font-weight:700;
+  background:rgba(255,215,0,.08);white-space:nowrap;display:none;align-self:center
+}
+.alt-marker.active{display:block}
+.alt-station-reading{margin-top:.8rem;font-size:.85rem;color:#7eb8ff;font-weight:700;text-align:center}
+.viz-update-note{font-size:.68rem;color:#404870;text-align:center;margin-top:.5rem}
+
+/* ── Sky-cam viz ── */
+.sky-cam-wrap{display:flex;gap:.9rem;align-items:flex-start}
+.sky-cam-img-box{flex:0 0 auto;width:240px;background:#0a0c18;border-radius:8px;overflow:hidden;min-height:160px;display:flex;align-items:center;justify-content:center;position:relative}
+.sky-cam-full{width:240px;height:180px;object-fit:cover;display:block;border-radius:8px}
+.sky-cam-img-box.sc-noimg .sky-cam-full{display:none}
+.sc-noimg-msg{display:none;color:#4a5890;font-size:.75rem;text-align:center;padding:10px 12px;line-height:1.6}
+.sky-cam-img-box.sc-noimg .sc-noimg-msg{display:block}
+.sky-cam-info{flex:1;display:flex;flex-direction:column;gap:.5rem}
+.sc-row{display:flex;flex-direction:column;gap:.1rem}
+.sc-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:#4a5890}
+.sc-val{font-size:.88rem;font-weight:700;color:#7eb8ff}
+@media(max-width:500px){
+  .sky-cam-wrap{flex-direction:column}
+  .sky-cam-img-box{width:100%}
+  .sky-cam-full{width:100%;height:auto;max-height:200px}
+}
+
+@media(max-width:520px){
+  .db-row{grid-template-columns:90px 1fr 48px;gap:.35rem .45rem}
+}
+@media(max-width:380px){
+  .db-row{grid-template-columns:80px 1fr 40px}
+  .hz-zone{font-size:.55rem}
+}
+
+/* Print button */
+.print-btn{
+  background:transparent;border:1px solid #2a2f55;border-radius:7px;
+  color:#8090b8;font-size:.78rem;padding:6px 12px;cursor:pointer;
+  float:right;margin-top:-.3rem;transition:border-color .15s,color .15s
+}
+.print-btn:hover{border-color:#58a6ff;color:#7eb8ff}
+
+/* Cross-curricular tags */
+.cc-tag{display:inline-block;background:#131a2a;border:1px solid #1e2a40;border-radius:5px;padding:.25rem .65rem;font-size:.75rem;color:#6080a8;margin:.2rem}
+
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:1rem;position:sticky;top:90px}
+.sb-card{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1rem}
+.sb-card h4{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#5060a0;margin-bottom:.8rem}
+.sensor-row{display:flex;justify-content:space-between;align-items:center;padding:.32rem 0;border-bottom:1px solid #1a1f35;font-size:.82rem}
+.sensor-row:last-child{border-bottom:none}
+.sensor-val{font-weight:700;color:#7eb8ff;font-variant-numeric:tabular-nums}
+.chart-wrap{position:relative;height:110px;margin-top:.6rem}
+.refresh-note{font-size:.66rem;color:#404870;margin-top:.4rem;text-align:center}
+.info-label{display:block;font-size:.68rem;color:#5060a0;margin-bottom:.1rem}
+.info-val{font-size:.83rem;color:#c0c8e0;margin-bottom:.65rem}
+.teacher-text{font-size:.8rem;color:#8090b8;line-height:1.65}
+
+details summary{padding:.7rem 1rem;font-size:.86rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;color:#c0c8e0}
+details summary::after{content:'›';color:#3d4275}
+details[open] summary::after{content:'‹'}
+details[open] summary{border-bottom:1px solid #1e2235}
+details .d-body{padding:.75rem 1rem;font-size:.83rem;color:#8090b8;line-height:1.65}
+
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;padding:1.1rem}
+  .sidebar{position:static;order:-1}
+  .vocab-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:500px){
+  .hero{padding:1.4rem 1rem 1.2rem}
+  .act-title{font-size:1.3rem}
+  .act-subtitle{font-size:.85rem}
+  .layout{padding:.9rem .85rem;gap:1rem}
+  .s-box{padding:1rem}
+  .content{gap:1rem}
+}
+@media(max-width:400px){
+  .hero{padding:1.1rem .85rem 1rem}
+  .act-title{font-size:1.15rem}
+  .layout{padding:.8rem .75rem}
+  .s-box{padding:.9rem}
+  .s-box h3{font-size:.75rem}
+  .vocab-grid{grid-template-columns:1fr}
+  .act-badges{gap:.3rem}
+  .badge{padding:.18rem .45rem;font-size:.67rem}
+  .breadcrumb{padding:.5rem .85rem;font-size:.73rem}
+}
+@media print{
+  .sidebar,.breadcrumb,.act-badges,.print-btn{display:none!important}
+  .layout{grid-template-columns:1fr;padding:0}
+  .s-box{border:none;padding:.5rem 0}
+  .wq-guide-body{display:block!important}
+  body{color:#000;background:#fff}
+}
+</style>
+</head>
+<body>
+{% include '_nav.html' %}
+
+<main id="main-content">
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="/learn/{{ module.id }}">{{ module.icon }} {{ module.title }}</a>
+  <span aria-hidden="true">›</span>
+  <span aria-current="page">{{ activity.title }}</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="act-badges" role="list">
+      <span class="badge b-grade" role="listitem">Grade {{ activity.grade_band }}</span>
+      <span class="badge b-type" role="listitem">{{ activity.type }}</span>
+      <span class="badge b-dur" role="listitem">{{ activity.duration }}</span>
+      {% for s in activity.subjects %}<span class="badge b-sub" role="listitem">{{ s }}</span>{% endfor %}
+    </div>
+    <h1 class="act-title">{{ activity.title }}</h1>
+    <p class="act-subtitle">{{ activity.subtitle }}</p>
+  </div>
+</div>
+
+<div class="layout">
+<div class="content">
+
+  <!-- Overview -->
+  <div class="s-box">
+    <h3>Overview</h3>
+    <p class="overview">{{ activity.overview }}</p>
+    <div class="nepal-box">
+      <div class="nepal-label">🇳🇵 Nepal Context</div>
+      <p>{{ activity.nepal_context }}</p>
+    </div>
+  </div>
+
+  <!-- Visualization -->
+  {% if activity.viz_type %}
+  <div class="s-box" id="viz-box">
+    <h3>Live Sensor Visualization</h3>
+    {% if activity.viz_config and activity.viz_config.title %}
+    <p class="viz-title">{{ activity.viz_config.title }}</p>
+    {% endif %}
+
+    {% if activity.viz_type == 'hz-gauges' %}
+      {% for g in activity.viz_config.gauges %}
+      <div class="hz-gauge" data-key="{{ g.key }}" data-min="{{ g.min }}" data-max="{{ g.max }}">
+        <div class="hz-gauge-label">
+          <span>{{ g.label }}</span>
+          <span class="hz-gauge-val"><span id="hzv-{{ g.key }}">--</span> {{ g.unit }}</span>
+        </div>
+        <div class="hz-gauge-track">
+          {% for z in g.zones %}<div class="hz-zone" style="width:{{ z.pct }}%;background:{{ z.color }}">{{ z.label }}</div>{% endfor %}
+          <div class="hz-needle" id="hzn-{{ g.key }}" style="left:50%"></div>
+        </div>
+        {% if g.fact %}<div class="hz-fact">{{ g.fact }}</div>{% endif %}
+      </div>
+      {% endfor %}
+
+    {% elif activity.viz_type == 'data-bars' %}
+      {% for s in activity.viz_config.sensors %}
+      <div class="db-row">
+        <div class="db-label">{{ s.label }}</div>
+        <div class="db-track">
+          <div class="db-fill" id="dbf-{{ s.key }}" style="width:0%;background:{{ s.color }}">
+            <span class="db-fill-label" id="dbl-{{ s.key }}"></span>
+          </div>
+        </div>
+        <div class="db-unit">{{ s.unit }}</div>
+      </div>
+      {% endfor %}
+      {% if activity.viz_config.note %}
+      <p class="db-note">{{ activity.viz_config.note }}</p>
+      {% endif %}
+
+    {% elif activity.viz_type == 'altitude-zones' %}
+      <div class="alt-zones" role="list">
+        {% for z in activity.viz_config.zones %}
+        <div class="alt-zone" role="listitem" style="background:{{ z.color }}18;border-left:3px solid {{ z.color }}40">
+          <span class="alt-zone-emoji" aria-hidden="true">{{ z.emoji }}</span>
+          <div class="alt-zone-body">
+            <div class="alt-zone-name">{{ z.name }}</div>
+            <div class="alt-zone-meta">{{ z.min_m | int }}–{{ z.max_m | int }} m ASL &nbsp;·&nbsp; {{ z.temp }}</div>
+            <div class="alt-zone-desc">{{ z.desc }}</div>
+          </div>
+          <span class="alt-marker" id="altmark-{{ loop.index0 }}" aria-label="This station is in this zone">📍 You are here</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="alt-station-reading" id="alt-station-text" aria-live="polite"></div>
+      {% if activity.viz_config.fact %}
+      <p class="hz-fact" style="margin-top:.6rem;text-align:center">{{ activity.viz_config.fact }}</p>
+      {% endif %}
+    {% elif activity.viz_type == 'sky-cam' %}
+      <div class="sky-cam-wrap">
+        <div class="sky-cam-img-box" id="sky-cam-imgbox">
+          <img id="sky-cam-img" src="/api/camera/latest.jpg" alt="Live sky camera" class="sky-cam-full"
+               onerror="document.getElementById('sky-cam-imgbox').classList.add('sc-noimg')">
+          <div class="sc-noimg-msg">📷 No image yet — first capture takes ~30 s after startup</div>
+        </div>
+        <div class="sky-cam-info">
+          <div class="sc-row"><span class="sc-lbl">Condition</span><span id="sc-cond" class="sc-val">—</span></div>
+          <div class="sc-row"><span class="sc-lbl">Cloud cover</span><span id="sc-cloud" class="sc-val">—</span></div>
+          <div class="sc-row"><span class="sc-lbl">Brightness</span><span id="sc-bright" class="sc-val">—</span></div>
+          <div class="sc-row"><span class="sc-lbl">Updated</span><span id="sc-time" class="sc-val">—</span></div>
+        </div>
+      </div>
+    {% endif %}
+
+    <p class="viz-update-note">Live data · auto-refreshes every 30 s</p>
+  </div>
+  {% endif %}
+
+  <!-- Objectives -->
+  <div class="s-box">
+    <h3>Learning Objectives</h3>
+    <ul>{% for o in activity.learning_objectives %}<li>{{ o }}</li>{% endfor %}</ul>
+  </div>
+
+  <!-- Background -->
+  {% if activity.background %}
+  <div class="s-box">
+    <h3>Background Reading</h3>
+    {% for para in activity.background.split('\n\n') %}
+    <p class="bg-para">{{ para }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Procedure with checklist -->
+  <div class="s-box">
+    <h3>Procedure</h3>
+    <ol class="procedure-list" role="list" aria-label="Activity procedure steps">
+      {% for step in activity.procedure %}
+      <li class="proc-item" role="listitem">
+        <input type="checkbox" class="proc-check" aria-label="Mark step {{ loop.index }} complete" id="step-{{ loop.index }}">
+        <span class="proc-num" aria-hidden="true">{{ loop.index }}</span>
+        <label class="proc-text" for="step-{{ loop.index }}">{{ step }}</label>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <!-- Discussion -->
+  <div class="s-box">
+    <h3>Discussion Questions</h3>
+    {% for q in activity.discussion_questions %}
+    <div class="dq-item">
+      <span class="dq-num" aria-hidden="true">Q{{ loop.index }}</span>
+      <span>{{ q }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Worksheet -->
+  <div class="s-box">
+    <h3>Worksheet Questions <button class="print-btn" onclick="window.print()" aria-label="Print worksheet">🖨 Print</button></h3>
+    {% for wq in activity.worksheet_questions %}
+    <div class="wq" role="region" aria-label="Question {{ loop.index }}">
+      <div class="wq-q">{{ loop.index }}. {{ wq.q }}</div>
+      <button class="wq-guide-toggle" aria-expanded="false" onclick="this.setAttribute('aria-expanded',this.getAttribute('aria-expanded')==='true'?'false':'true');this.nextElementSibling.classList.toggle('is-open')">
+        <span>Teacher Answer Guide</span><span aria-hidden="true">›</span>
+      </button>
+      <div class="wq-guide-body" aria-live="polite">{{ wq.answer_guide }}</div>
+      <div class="wq-marks">{{ wq.marks }} marks</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Vocabulary -->
+  <div class="s-box">
+    <h3>Vocabulary</h3>
+    <div class="vocab-grid" role="list">
+      {% for v in activity.vocabulary %}
+      <div class="vocab-card" role="listitem">
+        <div class="vocab-term">{{ v.term }}</div>
+        <div class="vocab-def">{{ v.definition }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Extension -->
+  <div class="s-box">
+    <h3>Extension Activity</h3>
+    <div class="ext-box"><p>{{ activity.extension }}</p></div>
+  </div>
+
+  {% if activity.cross_curricular %}
+  <div class="s-box">
+    <h3>Cross-Curricular Links</h3>
+    {% for cc in activity.cross_curricular %}
+    <span class="cc-tag">{{ cc }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Curriculum & SDG -->
+  <div class="s-box">
+    <h3>Curriculum &amp; SDG Links</h3>
+    <span class="info-label">Nepal CDC Reference</span>
+    <div class="info-val" style="margin-bottom:.8rem">{{ activity.curriculum_link }}</div>
+    <div>{% for sdg in activity.sdg_links %}<span class="sdg-pill">{{ sdg }}</span>{% endfor %}</div>
+  </div>
+
+</div><!-- /content -->
+
+<aside class="sidebar" aria-label="Live sensor data and activity info">
+
+  <!-- Live sensor panel -->
+  <div class="sb-card">
+    <h4>Live Station Data</h4>
+    {% set sensor_labels = {'air_temp':('Air Temp','°C'),'air_hum':('Humidity','%'),'pressure':('Pressure','hPa'),'altitude':('Altitude','m'),'heat_index':('Heat Index','°C'),'soil_temp':('Soil Temp','°C'),'soil_moist':('Moisture','%'),'mq7_voltage':('CO Voltage','V'),'mq135_voltage':('AQ Voltage','V')} %}
+    {% for key in activity.live_sensors %}
+      {% if key in sensor_labels %}
+      {% set label, unit = sensor_labels[key] %}
+      <div class="sensor-row">
+        <span>{{ label }}</span>
+        <span class="sensor-val" id="live-{{ key }}">
+          {% set val = latest.get(key) %}{% if val is not none %}{{ '%g' % val }}{% else %}--{% endif %}<small style="color:#404870;font-weight:400"> {{ unit }}</small>
+        </span>
+      </div>
+      {% endif %}
+    {% endfor %}
+    <div class="chart-wrap">
+      <canvas id="liveChart" aria-label="Live sensor history" role="img"></canvas>
+    </div>
+    <div class="refresh-note">last 20 readings · refreshes every 30 s</div>
+  </div>
+
+  <!-- Activity info -->
+  <div class="sb-card">
+    <h4>Activity Details</h4>
+    <span class="info-label">Grade Band</span><div class="info-val">Grade {{ activity.grade_band }}</div>
+    <span class="info-label">Type</span><div class="info-val">{{ activity.type | capitalize }}</div>
+    <span class="info-label">Duration</span><div class="info-val">{{ activity.duration }}</div>
+    {% if activity.materials %}
+    <span class="info-label">Materials</span><div class="info-val" style="margin-bottom:0">{{ activity.materials | join(', ') }}</div>
+    {% endif %}
+  </div>
+
+  {% if activity.teacher_notes %}
+  <div class="sb-card">
+    <h4>Teacher Notes</h4>
+    <p class="teacher-text">{{ activity.teacher_notes }}</p>
+  </div>
+  {% endif %}
+
+</aside>
+</div><!-- /layout -->
+</main>
+
+<script>
+const LIVE_SENSORS = {{ activity.live_sensors | tojson }};
+const SENSOR_META = {
+  air_temp:   {label:'Air Temp',  color:'#3fb950', unit:'°C'},
+  air_hum:    {label:'Humidity',  color:'#58a6ff', unit:'%'},
+  pressure:   {label:'Pressure',  color:'#7eb8ff', unit:'hPa'},
+  soil_temp:  {label:'Soil Temp', color:'#d29922', unit:'°C'},
+  soil_moist: {label:'Moisture',  color:'#56d364', unit:'%'},
+  mq7_raw:    {label:'CO',        color:'#f0883e', unit:'adc'},
+  mq135_raw:  {label:'Air Q.',    color:'#f85149', unit:'adc'},
+};
+
+const chartSensors = LIVE_SENSORS.filter(s => SENSOR_META[s]).slice(0, 4);
+const liveChart = new Chart(document.getElementById('liveChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: chartSensors.map(s => ({
+      label: SENSOR_META[s].label, borderColor: SENSOR_META[s].color,
+      data: [], tension: 0.3, pointRadius: 0, borderWidth: 1.5, fill: false,
+    })),
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#6070a0', boxWidth: 8, font: { size: 9 } } } },
+    scales: {
+      x: { ticks: { color: '#404070', font: { size: 9 }, maxTicksLimit: 5 }, grid: { color: '#1a1f35' } },
+      y: { ticks: { color: '#404070', font: { size: 9 } }, grid: { color: '#1a1f35' } },
+    },
+  },
+});
+
+async function refreshLive() {
+  try {
+    const r = await fetch('/api/data');
+    const d = await r.json();
+    const hist = (d.history || []).slice(-20);
+    liveChart.data.labels = hist.map(h => h.timestamp ? h.timestamp.substring(11,16) : '');
+    chartSensors.forEach((s, i) => { liveChart.data.datasets[i].data = hist.map(h => h[s]); });
+    liveChart.update('none');
+
+    // Update sidebar values
+    const latest = d.latest || {};
+    LIVE_SENSORS.forEach(s => {
+      const el = document.getElementById('live-' + s);
+      if (!el) return;
+      const raw = latest[s];
+      if (raw != null) {
+        const dp = (s.includes('raw') || s === 'altitude') ? 0 : 1;
+        const val = Number(raw).toFixed(dp);
+        const unit = (SENSOR_META[s] || {}).unit || '';
+        el.innerHTML = val + `<small style="color:#404870;font-weight:400"> ${unit}</small>`;
+      }
+    });
+  } catch(_) {}
+}
+refreshLive();
+setInterval(refreshLive, 30000);
+
+// ── Visualization ──────────────────────────────────────────────────────
+const VIZ_TYPE   = {{ (activity.viz_type   or '') | tojson }};
+const VIZ_CONFIG = {{ (activity.viz_config or {}) | tojson }};
+
+function updateViz(latest) {
+  if (!VIZ_TYPE || !latest) return;
+
+  if (VIZ_TYPE === 'hz-gauges') {
+    (VIZ_CONFIG.gauges || []).forEach(function(g) {
+      var raw = latest[g.key];
+      if (raw == null) return;
+      var pct = Math.min(100, Math.max(0, (raw - g.min) / (g.max - g.min) * 100));
+      var needle = document.getElementById('hzn-' + g.key);
+      var valEl  = document.getElementById('hzv-' + g.key);
+      if (needle) needle.style.left = pct.toFixed(1) + '%';
+      if (valEl) {
+        var dp = (g.key.indexOf('raw') >= 0 || g.key === 'altitude') ? 0 : 1;
+        valEl.textContent = Number(raw).toFixed(dp);
+      }
+    });
+  }
+
+  if (VIZ_TYPE === 'data-bars') {
+    (VIZ_CONFIG.sensors || []).forEach(function(s) {
+      var raw = latest[s.key];
+      if (raw == null) return;
+      var pct = Math.min(98, Math.max(2, raw / s.max * 100));
+      var bar = document.getElementById('dbf-' + s.key);
+      var lbl = document.getElementById('dbl-' + s.key);
+      if (bar) bar.style.width = pct.toFixed(1) + '%';
+      if (lbl) {
+        var dp = (s.key.indexOf('hum') >= 0 || s.key.indexOf('moist') >= 0 || s.key.indexOf('raw') >= 0) ? 0 : 1;
+        lbl.textContent = Number(raw).toFixed(dp);
+      }
+    });
+  }
+
+  if (VIZ_TYPE === 'altitude-zones') {
+    var alt = latest.altitude;
+    if (alt == null) return;
+    (VIZ_CONFIG.zones || []).forEach(function(z, i) {
+      var marker = document.getElementById('altmark-' + i);
+      if (!marker) return;
+      var inZone = alt >= z.min_m && alt <= z.max_m;
+      marker.classList.toggle('active', inZone);
+    });
+    var txt = document.getElementById('alt-station-text');
+    if (txt) txt.textContent = 'Station altitude: ~' + Math.round(alt) + ' m above sea level';
+  }
+}
+
+// sky-cam has its own refresh — independent of sensor data
+var SKY_COND_ICONS  = {clear:'☀️', partly_cloudy:'⛅', overcast:'☁️', night:'🌙', unknown:'❓'};
+var SKY_COND_LABELS = {clear:'Clear', partly_cloudy:'Partly Cloudy', overcast:'Overcast', night:'Night sky', unknown:'Unknown'};
+function updateSkyCam() {
+  fetch('/api/camera/sky').then(function(r){return r.json();}).then(function(d){
+    var condEl   = document.getElementById('sc-cond');
+    var cloudEl  = document.getElementById('sc-cloud');
+    var brightEl = document.getElementById('sc-bright');
+    var timeEl   = document.getElementById('sc-time');
+    if (condEl)   condEl.textContent   = (SKY_COND_ICONS[d.condition]||'❓') + ' ' + (SKY_COND_LABELS[d.condition]||'Unknown');
+    if (cloudEl)  cloudEl.textContent  = d.cloud_cover_pct != null ? d.cloud_cover_pct + '%' : '—';
+    if (brightEl) brightEl.textContent = d.brightness != null ? d.brightness + ' / 255' : '—';
+    if (timeEl && d.captured_at) {
+      var t = new Date(d.captured_at);
+      timeEl.textContent = t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    }
+    var img = document.getElementById('sky-cam-img');
+    if (img) img.src = '/api/camera/latest.jpg?t=' + Date.now();
+  }).catch(function(){});
+}
+if (VIZ_TYPE === 'sky-cam') {
+  updateSkyCam();
+  setInterval(updateSkyCam, 120000);
+}
+
+// Hook into the existing refreshLive so viz updates every 30 s
+var _origRefresh = refreshLive;
+refreshLive = function() {
+  _origRefresh();
+  fetch('/api/latest').then(function(r){ return r.json(); }).then(updateViz).catch(function(){});
+};
+// Initial viz load
+fetch('/api/latest').then(function(r){ return r.json(); }).then(updateViz).catch(function(){});
+
+// ── Persist checkbox state via localStorage ──────────────────────────
+const KEY = 'proc-' + location.pathname;
+const checks = document.querySelectorAll('.proc-check');
+const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+checks.forEach((cb, i) => {
+  if (saved[i]) cb.checked = true;
+  cb.addEventListener('change', () => {
+    const state = Array.from(checks).map(c => c.checked);
+    localStorage.setItem(KEY, JSON.stringify(state));
+  });
+});
+</script>
+</body>
+</html>

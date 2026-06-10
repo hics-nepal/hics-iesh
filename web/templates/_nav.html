@@ -1,0 +1,102 @@
+<a href="#main-content" class="skip-link">Skip to content</a>
+<nav class="site-nav" aria-label="Main navigation">
+  <a href="/" class="nav-brand" aria-label="HICS — go to dashboard">
+    <img src="/static/logo.svg" alt="HICS">
+  </a>
+  <div class="nav-links" id="nav-links" role="list">
+    <a href="/"
+       class="nav-link{% if request.path == '/' %} active{% endif %}"
+       {% if request.path == '/' %}aria-current="page"{% endif %}
+       role="listitem">Dashboard</a>
+    <a href="/camera"
+       class="nav-link{% if request.path == '/camera' %} active{% endif %}"
+       {% if request.path == '/camera' %}aria-current="page"{% endif %}
+       role="listitem">📷 Camera</a>
+    <a href="/learn"
+       class="nav-link{% if request.path.startswith('/learn') %} active{% endif %}"
+       {% if request.path.startswith('/learn') %}aria-current="page"{% endif %}
+       role="listitem">Learning Portal</a>
+  </div>
+  <div class="nav-spacer"></div>
+  <span class="nav-status" id="nav-status-pill" aria-live="polite" aria-label="Station status"></span>
+  <button class="font-toggle" id="font-toggle" aria-label="Cycle text size" title="Text size: Normal">
+    A<span style="font-size:.65em;opacity:.55;margin-left:1px">A</span>
+  </button>
+  <button class="nav-toggle" id="nav-toggle"
+          aria-label="Toggle navigation menu"
+          aria-expanded="false"
+          aria-controls="nav-links">
+    <span aria-hidden="true"></span>
+    <span aria-hidden="true"></span>
+    <span aria-hidden="true"></span>
+  </button>
+</nav>
+
+{% if request.path.startswith('/learn/') %}
+{% set MODS = [('climate','🌡️','Climate'),('soil','🌱','Soil'),('air','💨','Air Quality'),('data','📊','Data Science'),('environment','🌍','Environment')] %}
+<nav class="learn-subnav" aria-label="Learning modules">
+  <a href="/learn" class="subnav-back" title="Back to Learning Portal">‹ Portal</a>
+  {% for mid, icon, label in MODS %}
+  <a href="/learn/{{ mid }}"
+     class="subnav-link{% if request.path.startswith('/learn/' + mid) %} active{% endif %}"
+     {% if request.path.startswith('/learn/' + mid) %}aria-current="true"{% endif %}>
+    <span aria-hidden="true">{{ icon }}</span>{{ label }}
+  </a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+<script>
+(function(){
+  /* Hamburger */
+  var btn   = document.getElementById('nav-toggle');
+  var links = document.getElementById('nav-links');
+  if (btn && links) {
+    btn.addEventListener('click', function(){
+      var open = links.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && links.classList.contains('is-open')){
+        links.classList.remove('is-open');
+        btn.setAttribute('aria-expanded','false');
+        btn.focus();
+      }
+    });
+    document.addEventListener('click', function(e){
+      if (!e.target.closest('.site-nav') && links.classList.contains('is-open')){
+        links.classList.remove('is-open');
+        btn.setAttribute('aria-expanded','false');
+      }
+    });
+  }
+
+  /* Font-size toggle */
+  var SIZES  = ['', 'lg', 'xl'];
+  var LABELS = ['Normal', 'Large', 'Extra large'];
+  var si = Math.max(0, SIZES.indexOf(localStorage.getItem('hics-sz') || ''));
+  document.documentElement.dataset.sz = SIZES[si];
+  var ft = document.getElementById('font-toggle');
+  if (ft) {
+    ft.title = 'Text size: ' + LABELS[si];
+    ft.addEventListener('click', function(){
+      si = (si + 1) % SIZES.length;
+      document.documentElement.dataset.sz = SIZES[si];
+      localStorage.setItem('hics-sz', SIZES[si]);
+      ft.title = 'Text size: ' + LABELS[si];
+    });
+  }
+
+  /* Nav status pill — works on every page */
+  var pill = document.getElementById('nav-status-pill');
+  function fetchStatus(){
+    if (!pill) return;
+    fetch('/api/status').then(function(r){ return r.json(); }).then(function(d){
+      pill.textContent = d.online ? 'Online' : 'Offline';
+      pill.className   = d.online ? 'nav-status' : 'nav-status offline';
+    }).catch(function(){});
+  }
+  fetchStatus();
+  setInterval(fetchStatus, 60000);
+})();
+</script>

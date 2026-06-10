@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ module.title }} — HICS Learning</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
+
+.hero{padding:2rem 1.5rem 1.5rem;border-bottom:1px solid #1e2235;background:#141728}
+.hero-inner{max-width:900px;margin:0 auto;display:flex;align-items:flex-start;gap:1.2rem}
+.hero-icon{font-size:3rem;line-height:1;flex-shrink:0}
+.hero-title{font-size:1.6rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-.02em}
+.hero-tagline{color:#a0a8c8;line-height:1.55;margin-bottom:.8rem}
+.hero-desc{color:#c0c8e0;line-height:1.7;font-size:.87rem}
+
+.layout{display:grid;grid-template-columns:1fr 270px;gap:1.5rem;padding:1.5rem;max-width:1200px;margin:0 auto;align-items:start}
+
+/* Activity list */
+.grade-group{margin-bottom:1.8rem}
+.grade-heading{
+  font-size:.78rem;font-weight:700;color:#7eb8ff;
+  margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:1px solid #1e2235;
+  display:flex;align-items:center;gap:.5rem
+}
+.grade-dot{width:8px;height:8px;border-radius:50%;background:#7eb8ff;flex-shrink:0}
+
+.act-card{
+  background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1.1rem;
+  margin-bottom:.65rem;text-decoration:none;color:inherit;display:block;
+  transition:border-color .15s,background .15s;
+}
+.act-card:hover{border-color:{{ module.color }};background:#1a1f35}
+.act-card:focus-visible{outline:2px solid {{ module.color }};outline-offset:2px}
+.act-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.5rem}
+.act-type-icon{font-size:1.1rem;flex-shrink:0;margin-top:.1rem}
+.act-title{font-size:.95rem;font-weight:700}
+.act-subtitle{font-size:.79rem;color:#8090b8;line-height:1.4;margin-top:.1rem}
+.act-meta{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem}
+.badge{border-radius:6px;padding:.2rem .52rem;font-size:.68rem;font-weight:600;border:1px solid}
+.b-type{background:rgba(126,184,255,.08);border-color:rgba(126,184,255,.2);color:#7eb8ff}
+.b-dur{background:rgba(255,255,255,.04);border-color:#2a2f55;color:#8090b8}
+.b-sub{background:rgba(255,255,255,.03);border-color:#2a2f55;color:#a0a8c8}
+.act-arrow{color:#3d4275;font-size:1.1rem;flex-shrink:0;margin-top:.15rem}
+
+/* Type icons */
+.type-icons{observation:'👁️',experiment:'🔬',analysis:'📊',research:'🔍',project:'📝'}
+
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:1rem;position:sticky;top:90px}
+.s-card{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1rem}
+.s-card h4{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#5060a0;margin-bottom:.8rem}
+
+.sensor-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid #1a1f35;font-size:.82rem}
+.sensor-row:last-child{border-bottom:none}
+.sensor-val{font-weight:700;color:#7eb8ff;font-variant-numeric:tabular-nums}
+
+.chart-container{position:relative;height:120px;margin-top:.5rem}
+
+.guide-text{font-size:.8rem;color:#8090b8;line-height:1.65}
+
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;padding:1.1rem}
+  .sidebar{position:static}
+}
+@media(max-width:500px){
+  .hero{padding:1.5rem 1rem 1.2rem}
+  .hero-inner{flex-direction:column;gap:.7rem}
+  .hero-icon{font-size:2rem}
+  .hero-title{font-size:1.3rem}
+  .layout{padding:.9rem .85rem;gap:1rem}
+  .act-card{padding:.9rem}
+  .grade-group{margin-bottom:1.3rem}
+}
+@media(max-width:400px){
+  .hero{padding:1.2rem .85rem 1rem}
+  .hero-title{font-size:1.15rem}
+  .hero-tagline{font-size:.82rem}
+  .hero-desc{font-size:.8rem}
+  .layout{padding:.8rem .75rem}
+  .act-card{padding:.8rem}
+  .act-title{font-size:.9rem}
+  .s-card{padding:.85rem}
+}
+</style>
+</head>
+<body>
+{% include '_nav.html' %}
+
+<main id="main-content">
+<div class="hero">
+  <div class="hero-inner">
+    <span class="hero-icon" aria-hidden="true">{{ module.icon }}</span>
+    <div>
+      <div class="hero-title">{{ module.title }}</div>
+      <div class="hero-tagline">{{ module.tagline }}</div>
+      <div class="hero-desc">{{ module.description }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div>
+    {% set type_icons = {'observation': '👁️', 'experiment': '🔬', 'analysis': '📊', 'research': '🔍', 'project': '📝'} %}
+    {% set grade_groups = [('6–7','Grades 6–7'),('6–8','Grades 6–8'),('8–9','Grades 8–9'),('8–10','Grades 8–10'),('9–10','Grades 9–10'),('9–11','Grades 9–11'),('10–11','Grades 10–11'),('11–12','Grades 11–12'),('UG','Undergraduate')] %}
+    {% for gb_key, gb_label in grade_groups %}
+      {% set acts = module.activities | selectattr('grade_band','equalto',gb_key) | list %}
+      {% if acts %}
+      <div class="grade-group">
+        <div class="grade-heading"><span class="grade-dot" aria-hidden="true"></span>{{ gb_label }}</div>
+        {% for a in acts %}
+        <a class="act-card" href="/learn/{{ module.id }}/{{ a.id }}" aria-label="{{ a.title }} — {{ a.type }}, {{ a.duration }}">
+          <div class="act-top">
+            <div>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span class="act-type-icon" aria-hidden="true">{{ type_icons.get(a.type, '📌') }}</span>
+                <div class="act-title">{{ a.title }}</div>
+              </div>
+              <div class="act-subtitle">{{ a.subtitle }}</div>
+            </div>
+            <span class="act-arrow" aria-hidden="true">›</span>
+          </div>
+          <div class="act-meta">
+            <span class="badge b-type">{{ a.type }}</span>
+            <span class="badge b-dur">{{ a.duration }}</span>
+            {% for s in a.subjects[:3] %}<span class="badge b-sub">{{ s }}</span>{% endfor %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <aside class="sidebar" aria-label="Live data and teaching guide">
+    <div class="s-card">
+      <h4>Live Station Data</h4>
+      {% for key, label, unit in [('air_temp','Air Temp','°C'),('air_hum','Humidity','%'),('pressure','Pressure','hPa'),('altitude','Altitude','m'),('soil_temp','Soil Temp','°C'),('soil_moist','Soil Moisture','%')] %}
+      {% if key in module.sensors %}
+      <div class="sensor-row">
+        <span>{{ label }}</span>
+        <span class="sensor-val" id="mod-{{ key }}">
+          {% if latest[key] is not none %}{{ latest[key] }}{% else %}--{% endif %}
+          <small style="color:#5060a0;font-weight:400"> {{ unit }}</small>
+        </span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      <div class="chart-container">
+        <canvas id="modChart" aria-label="Recent sensor trend" role="img"></canvas>
+      </div>
+      <div style="font-size:.68rem;color:#404870;margin-top:.4rem;text-align:center">last 20 readings · updates every 30 s</div>
+    </div>
+
+    <div class="s-card">
+      <h4>Teaching Guide</h4>
+      <p class="guide-text">{{ module.teaching_guide }}</p>
+    </div>
+  </aside>
+</div>
+</main>
+
+<script>
+const moduleSensors = {{ module.sensors | tojson }};
+const SENSOR_META = {
+  air_temp:  {label:'Air Temp',  color:'#3fb950'},
+  air_hum:   {label:'Humidity',  color:'#58a6ff'},
+  pressure:  {label:'Pressure',  color:'#7eb8ff'},
+  soil_temp: {label:'Soil Temp', color:'#d29922'},
+  soil_moist:{label:'Moisture',  color:'#56d364'},
+  mq7_raw:   {label:'CO',        color:'#f0883e'},
+  mq135_raw: {label:'Air Q.',    color:'#f85149'},
+};
+const visible = moduleSensors.filter(s => SENSOR_META[s]).slice(0,3);
+
+const modChart = new Chart(document.getElementById('modChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: visible.map(s => ({
+      label: SENSOR_META[s].label, borderColor: SENSOR_META[s].color,
+      data: [], tension: 0.3, pointRadius: 0, borderWidth: 1.5, fill: false,
+    })),
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#6070a0', boxWidth: 8, font: { size: 9 } } } },
+    scales: {
+      x: { ticks: { color: '#4050a0', font: { size: 9 }, maxTicksLimit: 5 }, grid: { color: '#1a1f35' } },
+      y: { ticks: { color: '#4050a0', font: { size: 9 } }, grid: { color: '#1a1f35' } },
+    },
+  },
+});
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/data');
+    const d = await r.json();
+    const hist = (d.history || []).slice(-20);
+    modChart.data.labels = hist.map(r => r.timestamp ? r.timestamp.substring(11,16) : '');
+    visible.forEach((s,i) => { modChart.data.datasets[i].data = hist.map(r => r[s]); });
+    modChart.update('none');
+  } catch(_) {}
+}
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

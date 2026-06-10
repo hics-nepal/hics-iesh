@@ -1,5 +1,25 @@
-*.db
-*.pyc
+# Secrets / credentials — never commit
+info.txt
+*.env
+.env*
+
+# Python
 __pycache__/
-.env
+*.pyc
+*.pyo
+
+# Database (lives in ~/hics-data/ on RPi, not in the repo)
+*.db
+*.sqlite
+
+# Old / archive code
+archive/
+
+# Runtime / ephemeral
+.firstboot-complete
+hics-firstboot.log
 *.log
+
+# OS
+.DS_Store
+Thumbs.db

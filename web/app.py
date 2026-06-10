@@ -2,14 +2,38 @@
 import sys
 import os
 import socket
+import threading
+import time
 from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, abort, send_file, Response
 import data.database as db
 from sensors.config import SEA_LEVEL_HPA, API_KEY
+import curriculum
+from sensors.camera import capture_sky, sky_analysis, stream_frames, streaming as cam_streaming, DEFAULT_PATH as SKY_PATH
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='templates', static_folder='static')
+
+# ── Sky camera state ────────────────────────────────────────────────────────
+_sky_state = {}
+
+def _camera_loop():
+    """Background daemon: capture sky every 2 minutes, update _sky_state.
+    Skips capture while MJPEG streaming is active (shared camera hardware)."""
+    global _sky_state
+    while True:
+        if not cam_streaming.is_set():
+            try:
+                ok = capture_sky(SKY_PATH)
+                if ok:
+                    _sky_state = sky_analysis(SKY_PATH)
+            except Exception:
+                pass
+        time.sleep(120)
+
+_cam_thread = threading.Thread(target=_camera_loop, daemon=True, name='sky-cam')
+_cam_thread.start()
 
 
 def _pressure_to_altitude(pressure_hpa):
@@ -90,6 +114,55 @@ def api_status():
         'db_rows':     db.count(),
         'timestamp':   datetime.now().isoformat(),
     })
+
+
+@app.route('/camera')
+def camera_page():
+    return render_template('camera.html', sky=_sky_state)
+
+
+@app.route('/api/camera/latest.jpg')
+def api_camera_latest():
+    if not os.path.exists(SKY_PATH):
+        return Response('No image yet', status=503)
+    return send_file(SKY_PATH, mimetype='image/jpeg',
+                     max_age=0, conditional=True)
+
+
+@app.route('/api/camera/sky')
+def api_camera_sky():
+    return jsonify(_sky_state)
+
+
+@app.route('/api/camera/stream')
+def api_camera_stream():
+    return Response(stream_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame',
+                    headers={'Cache-Control': 'no-cache, no-store',
+                             'X-Accel-Buffering': 'no'})
+
+
+@app.route('/learn')
+def learn_index():
+    return render_template('learn/index.html', modules=curriculum.all_modules())
+
+
+@app.route('/learn/<module_id>')
+def learn_module(module_id):
+    module = curriculum.get_module(module_id)
+    if not module:
+        abort(404)
+    latest = _enrich(db.get_latest()) or {}
+    return render_template('learn/module.html', module=module, latest=latest)
+
+
+@app.route('/learn/<module_id>/<activity_id>')
+def learn_activity(module_id, activity_id):
+    module, activity = curriculum.get_activity(module_id, activity_id)
+    if not activity:
+        abort(404)
+    latest = _enrich(db.get_latest()) or {}
+    return render_template('learn/activity.html', module=module, activity=activity, latest=latest)
 
 
 if __name__ == '__main__':

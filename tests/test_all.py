@@ -13,6 +13,7 @@ TESTS = [
     ("MQ       (CO + AQI)",       "test_mq.py"),
     ("OLED     (SH1106 display)", "test_oled.py"),
     ("RTC      (DS3231 clock)",   "test_rtc.py"),
+    ("Camera   (OV5647 sky cam)", "test_camera.py"),
 ]
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

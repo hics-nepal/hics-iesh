@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Portal — HICS IESH</title>
+<meta name="description" content="Nepal CDC-aligned environmental learning activities for Grades 6–12 and undergraduate, using live sensor data.">
+<link rel="stylesheet" href="/static/style.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
+
+.hero{
+  background:linear-gradient(135deg,#141728 0%,#1a1f38 50%,#141728 100%);
+  border-bottom:1px solid #2a2f55;padding:2.8rem 2rem 2.2rem;text-align:center
+}
+.hero h1{font-size:1.9rem;font-weight:800;margin-bottom:.5rem;letter-spacing:-.02em}
+.hero p{color:#a0a8c8;max-width:560px;margin:0 auto 1.4rem;line-height:1.65;font-size:.93rem}
+.pill-row{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.pill{background:#1e2235;border:1px solid #2a2f55;border-radius:16px;padding:.3rem .9rem;font-size:.75rem;color:#8090b8}
+
+.stats-row{
+  display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;
+  padding:1rem 2rem;border-bottom:1px solid #2a2f55;background:#0f1117
+}
+.stat{text-align:center}
+.stat-num{font-size:1.4rem;font-weight:800;color:#7eb8ff}
+.stat-label{font-size:.72rem;color:#6070a8;text-transform:uppercase;letter-spacing:.08em;margin-top:.1rem}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.1rem;padding:1.5rem 1.5rem;max-width:1200px;margin:0 auto}
+
+.card{
+  background:#141728;border:1px solid #2a2f55;border-radius:12px;
+  padding:1.5rem;text-decoration:none;color:inherit;
+  display:flex;flex-direction:column;gap:.75rem;
+  transition:border-color .2s,transform .15s,box-shadow .2s;
+  position:relative;overflow:hidden
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--c);opacity:.7;border-radius:12px 12px 0 0
+}
+.card:hover{border-color:var(--c);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.card:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+
+.card-header{display:flex;align-items:flex-start;gap:.9rem}
+.card-icon{font-size:2.2rem;line-height:1;flex-shrink:0}
+.card-title{font-size:1.05rem;font-weight:700;margin-bottom:.2rem}
+.card-tagline{font-size:.8rem;color:#8090b8;line-height:1.5}
+
+.card-desc{font-size:.82rem;color:#a0a8c8;line-height:1.6;flex:1}
+
+.card-footer{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:auto;align-items:center;justify-content:space-between}
+.badge-row{display:flex;gap:.4rem;flex-wrap:wrap}
+.badge{border-radius:6px;padding:.2rem .55rem;font-size:.7rem;font-weight:600;border:1px solid}
+.grade-b{background:rgba(126,184,255,.08);border-color:rgba(126,184,255,.2);color:#7eb8ff}
+.count-b{background:rgba(255,255,255,.04);border-color:#2a2f55;color:#8090b8}
+.arrow{color:#3d4275;font-size:1.1rem}
+
+footer{text-align:center;padding:2rem;color:#4a5270;font-size:.78rem;border-top:1px solid #1e2235;margin-top:1rem}
+
+@media(max-width:600px){
+  .hero{padding:2rem 1.25rem 1.6rem}
+  .hero h1{font-size:1.4rem}
+  .hero p{font-size:.88rem}
+  .grid{padding:1.1rem .9rem;gap:.9rem}
+  .stats-row{gap:1.2rem;padding:.75rem 1rem}
+}
+@media(max-width:400px){
+  .hero{padding:1.5rem 1rem 1.3rem}
+  .hero h1{font-size:1.2rem}
+  .stats-row{gap:.8rem;padding:.65rem .75rem}
+  .stat-num{font-size:1.15rem}
+  .stat-label{font-size:.65rem}
+  .grid{padding:.9rem .75rem;gap:.8rem}
+  .card{padding:1.1rem}
+  .card-icon{font-size:1.8rem}
+  .card-title{font-size:.97rem}
+  .pill{font-size:.7rem;padding:.25rem .7rem}
+}
+</style>
+</head>
+<body>
+{% include '_nav.html' %}
+
+<main id="main-content">
+<div class="hero">
+  <h1>Learning Portal</h1>
+  <p>Nepal CDC-aligned environmental science activities for Grades 6–12 and undergraduate, powered by live sensor data from this station.</p>
+  <div class="pill-row" role="list">
+    <span class="pill" role="listitem">Grades 6–12 &amp; UG</span>
+    <span class="pill" role="listitem">Nepal CDC Aligned</span>
+    <span class="pill" role="listitem">Live Sensor Data</span>
+    <span class="pill" role="listitem">Cross-Curricular</span>
+    <span class="pill" role="listitem">English Medium</span>
+  </div>
+</div>
+
+<div class="stats-row" aria-label="Portal statistics">
+  <div class="stat"><div class="stat-num">5</div><div class="stat-label">Modules</div></div>
+  <div class="stat"><div class="stat-num">25</div><div class="stat-label">Activities</div></div>
+  <div class="stat"><div class="stat-num">7</div><div class="stat-label">Subjects</div></div>
+  <div class="stat"><div class="stat-num">6–UG</div><div class="stat-label">Grade Range</div></div>
+</div>
+
+<div class="grid" role="list">
+{% for m in modules %}
+<a class="card" href="/learn/{{ m.id }}" style="--c:{{ m.color }}" role="listitem" aria-label="{{ m.title }} module — {{ m.activities|length }} activities">
+  <div class="card-header">
+    <span class="card-icon" aria-hidden="true">{{ m.icon }}</span>
+    <div>
+      <div class="card-title">{{ m.title }}</div>
+      <div class="card-tagline">{{ m.tagline }}</div>
+    </div>
+  </div>
+  <div class="card-desc">{{ m.description[:160] }}…</div>
+  <div class="card-footer">
+    <div class="badge-row">
+      <span class="badge grade-b">Gr 6 – UG</span>
+      <span class="badge count-b">{{ m.activities|length }} activities</span>
+    </div>
+    <span class="arrow" aria-hidden="true">›</span>
+  </div>
+</a>
+{% endfor %}
+</div>
+</main>
+<footer>IESH Integrated Environmental Sensor Hub &nbsp;·&nbsp; Nepal &nbsp;·&nbsp; <a href="/" style="color:#4a5270">Dashboard</a></footer>
+</body>
+</html>

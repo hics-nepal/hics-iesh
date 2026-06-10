@@ -1,0 +1,189 @@
+/* HICS — shared stylesheet */
+
+/* ── CSS variables (shared across all pages) ──────────────────────────── */
+:root {
+  --bg:       #0d1117;
+  --surface:  #141728;
+  --surface2: #1a1f35;
+  --border:   #1e2235;
+  --border2:  #2a2f55;
+  --text:     #e8eaf0;
+  --muted:    #8090b8;
+  --accent:   #58a6ff;
+  --accent-l: #7eb8ff;
+  --green:    #3fb950;
+  --yellow:   #d29922;
+  --orange:   #f0883e;
+  --red:      #f85149;
+  --purple:   #bc8cff;
+}
+
+/* ── Font-size scaling ─────────────────────────────────────────────────── */
+/* html font-size is root = 1rem. Scale it to grow all rem values. */
+html[data-sz="lg"] { font-size: 112%; }
+html[data-sz="xl"] { font-size: 125%; }
+
+/* ── Skip link ─────────────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute; top: -56px; left: 1rem;
+  background: #fff; color: #0d1117; padding: 8px 16px;
+  border-radius: 4px; font-weight: 700; font-size: .875rem;
+  text-decoration: none; z-index: 9999; transition: top .15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.skip-link:focus { top: .5rem; }
+
+/* ── Site nav ──────────────────────────────────────────────────────────── */
+.site-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface); border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; gap: .4rem;
+  padding: .55rem 1.25rem; min-height: 52px;
+}
+
+.nav-brand { display: flex; align-items: center; flex-shrink: 0; text-decoration: none; }
+.nav-brand img { height: 26px; width: auto; display: block; }
+
+.nav-links { display: flex; align-items: center; gap: 2px; padding-left: .6rem; }
+
+.nav-link {
+  color: var(--muted); text-decoration: none;
+  font-size: .83rem; padding: 5px 11px; border-radius: 6px;
+  transition: background .15s, color .15s; white-space: nowrap;
+}
+.nav-link:hover  { background: rgba(255,255,255,.06); color: #d0d8f0; }
+.nav-link.active { background: rgba(88,166,255,.12); color: var(--accent-l); font-weight: 600; }
+
+.nav-spacer { flex: 1; min-width: 0; }
+
+.nav-status {
+  font-size: .72rem; padding: 3px 9px; border-radius: 10px; font-weight: 600;
+  background: rgba(63,185,80,.1); color: var(--green); border: 1px solid rgba(63,185,80,.2);
+  white-space: nowrap; flex-shrink: 0;
+}
+.nav-status.offline {
+  background: rgba(248,81,73,.1); color: var(--red); border-color: rgba(248,81,73,.2);
+}
+
+/* ── Font-size toggle ──────────────────────────────────────────────────── */
+.font-toggle {
+  display: flex; align-items: center;
+  background: none; border: 1px solid var(--border2); border-radius: 6px;
+  cursor: pointer; padding: 5px 9px; color: var(--muted); font-size: .78rem;
+  transition: border-color .15s, color .15s; white-space: nowrap;
+  flex-shrink: 0; font-family: inherit; line-height: 1; letter-spacing: -.01em;
+}
+.font-toggle:hover       { border-color: var(--accent); color: var(--accent-l); }
+.font-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Hamburger ─────────────────────────────────────────────────────────── */
+.nav-toggle {
+  display: none; flex-direction: column; justify-content: center; gap: 5px;
+  background: none; border: 1px solid var(--border2); border-radius: 6px;
+  cursor: pointer; padding: 7px 9px; margin-left: .25rem; flex-shrink: 0;
+}
+.nav-toggle span { display: block; width: 18px; height: 2px; background: var(--muted); border-radius: 2px; transition: .2s; }
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Learn sub-nav ─────────────────────────────────────────────────────── */
+.learn-subnav {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: stretch; gap: 0;
+  padding: 0 .75rem; overflow-x: auto; scrollbar-width: none;
+  position: sticky; top: 52px; z-index: 99;
+}
+.learn-subnav::-webkit-scrollbar { display: none; }
+
+.subnav-back {
+  display: flex; align-items: center; gap: .3rem;
+  padding: .48rem .75rem .48rem .2rem;
+  color: #5060a0; font-size: .73rem; text-decoration: none;
+  border-right: 1px solid var(--border); margin-right: .35rem;
+  white-space: nowrap; transition: color .15s; flex-shrink: 0;
+}
+.subnav-back:hover { color: var(--accent-l); }
+
+.subnav-link {
+  display: flex; align-items: center; gap: .38rem;
+  padding: .5rem .72rem; font-size: .77rem; color: #5a6898;
+  text-decoration: none; white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s, background .15s;
+  flex-shrink: 0;
+}
+.subnav-link:hover  { color: #c0c8e8; background: rgba(255,255,255,.03); }
+.subnav-link.active { color: var(--accent-l); border-bottom-color: var(--accent-l); font-weight: 600; }
+.subnav-link.active:hover { background: rgba(88,166,255,.06); }
+
+/* ── Focus styles (global) ─────────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* ── Dashboard: Learning Portal section ────────────────────────────────── */
+.learn-portal-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(155px,1fr)); gap: 8px;
+}
+.learn-mod-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9px; padding: 11px 11px 11px 14px;
+  text-decoration: none; color: inherit;
+  transition: border-color .15s, background .15s;
+  position: relative; overflow: hidden;
+}
+.learn-mod-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--mc, var(--accent)); border-radius: 9px 0 0 9px;
+}
+.learn-mod-card:hover       { border-color: var(--mc, var(--accent)); background: var(--surface2); }
+.learn-mod-card:focus-visible { outline: 2px solid var(--mc, var(--accent)); outline-offset: 2px; }
+.lm-icon  { font-size: 1.35rem; line-height: 1; flex-shrink: 0; }
+.lm-title { font-size: .82rem; font-weight: 700; }
+.lm-desc  { font-size: .67rem; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+.lm-arrow { margin-left: auto; color: #3d4275; font-size: 1rem; flex-shrink: 0; }
+
+.learn-all-btn {
+  display: inline-flex; align-items: center; gap: .4rem; margin-top: 10px;
+  background: rgba(88,166,255,.09); border: 1px solid rgba(88,166,255,.22);
+  border-radius: 8px; padding: 8px 16px; color: var(--accent-l); font-size: .82rem;
+  text-decoration: none; font-weight: 600; transition: background .15s, border-color .15s;
+}
+.learn-all-btn:hover { background: rgba(88,166,255,.17); border-color: rgba(88,166,255,.38); }
+
+/* ── Mobile nav ─────────────────────────────────────────────────────────── */
+@media (max-width: 620px) {
+  .nav-toggle { display: flex; }
+  .nav-links {
+    display: none; position: absolute; top: 52px; left: 0; right: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border2);
+    flex-direction: column; align-items: flex-start;
+    padding: .5rem 1.25rem .8rem; gap: 2px;
+  }
+  .nav-links.is-open { display: flex; }
+  .nav-link { width: 100%; padding: 8px 12px; }
+  .nav-status { display: none; }
+  .learn-portal-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Compact nav at small sizes */
+@media (max-width: 480px) {
+  .site-nav { padding: .5rem .8rem; min-height: 48px; }
+  .font-toggle { padding: 4px 7px; font-size: .71rem; }
+  .learn-subnav { top: 48px; padding: 0 .35rem; }
+  .subnav-link { padding: .42rem .48rem; font-size: .71rem; gap: .26rem; }
+  .subnav-back { padding: .42rem .46rem .42rem 0; font-size: .68rem; margin-right: .2rem; }
+}
+@media (max-width: 380px) {
+  /* Drop font-toggle on very narrow screens — focus area needed */
+  .font-toggle { display: none; }
+}
+
+@media (max-width: 360px) {
+  .learn-portal-grid { grid-template-columns: 1fr; }
+}
+@media print {
+  .site-nav, .learn-subnav, .nav-toggle, .skip-link { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+}

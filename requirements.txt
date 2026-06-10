@@ -1,0 +1,12 @@
+# HICS IESH — Python dependencies
+# Install on Raspberry Pi with: pip3 install --break-system-packages -r requirements.txt
+
+flask>=2.3
+smbus2>=0.4
+Pillow>=9.0
+RPi.GPIO>=0.7
+spidev>=3.5
+bmp280>=0.0.3
+adafruit-blinka>=8.0
+adafruit-circuitpython-dht>=3.7
+adafruit-circuitpython-ssd1306>=2.12

@@ -45,7 +45,7 @@ NODE_LOCATION = 'HICS Station, Nepal'
 SEA_LEVEL_HPA = 1013.25   # reference sea-level pressure for altitude calc
 
 # Database
-DB_PATH = '/home/pawan/iesh_data.db'
+DB_PATH = '/home/pawan/hics-data/hics.db'
 
 # Remote API
 API_URL     = 'https://himalayansciences.org/data/api/'

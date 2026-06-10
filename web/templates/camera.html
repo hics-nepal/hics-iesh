@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Camera — HICS</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
+
+.cam-page{max-width:960px;margin:0 auto;padding:1.5rem}
+.cam-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;gap:1rem;flex-wrap:wrap}
+.cam-title{font-size:1.25rem;font-weight:800;display:flex;align-items:center;gap:.55rem}
+.cam-subtitle{font-size:.8rem;color:#6070a0;margin-top:.2rem}
+
+/* Main viewer */
+.cam-viewer{background:#0a0c18;border:1px solid #1e2235;border-radius:12px;overflow:hidden;margin-bottom:1.2rem;position:relative}
+.cam-img-box{position:relative;width:100%;min-height:360px;display:flex;align-items:center;justify-content:center;background:#080a14}
+#cam-img{width:100%;max-height:540px;object-fit:contain;display:block}
+.cam-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent, rgba(0,0,0,.8));
+  padding:.6rem .9rem .7rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem
+}
+.cam-badge{
+  display:inline-flex;align-items:center;gap:.35rem;
+  background:rgba(20,23,40,.85);border:1px solid #2a2f55;
+  border-radius:20px;padding:.25rem .7rem;font-size:.78rem;font-weight:600;backdrop-filter:blur(4px)
+}
+.cam-timestamp{font-size:.68rem;color:#5060a0}
+.cam-noimg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:3rem 1rem;color:#4a5890;font-size:.85rem;text-align:center}
+.cam-noimg-icon{font-size:2.5rem;opacity:.4}
+
+/* Controls */
+.cam-controls{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.btn-stream{
+  display:inline-flex;align-items:center;gap:.45rem;
+  background:#1e3a5c;border:1px solid #2a5080;color:#7eb8ff;
+  border-radius:8px;padding:.5rem 1.1rem;font-size:.85rem;font-weight:700;cursor:pointer;
+  transition:background .15s,border-color .15s
+}
+.btn-stream:hover{background:#254a75;border-color:#3a70b0}
+.btn-stream.streaming{background:#3a1a1a;border-color:#80302a;color:#f08070}
+.btn-stream.streaming:hover{background:#4a2020}
+.btn-snapshot{
+  display:inline-flex;align-items:center;gap:.45rem;
+  background:transparent;border:1px solid #2a2f55;color:#8090b8;
+  border-radius:8px;padding:.5rem 1.1rem;font-size:.85rem;cursor:pointer;
+  transition:border-color .15s,color .15s
+}
+.btn-snapshot:hover{border-color:#58a6ff;color:#7eb8ff}
+.stream-note{font-size:.72rem;color:#404870}
+
+/* Stats bar */
+.cam-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:#1e2235;border:1px solid #1e2235;border-radius:10px;
+  overflow:hidden;margin-bottom:1.2rem
+}
+.stat-cell{background:#141728;padding:.75rem 1rem;text-align:center}
+.stat-cell-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#4a5890;margin-bottom:.3rem}
+.stat-cell-val{font-size:1rem;font-weight:800;color:#7eb8ff;font-variant-numeric:tabular-nums}
+.stat-cell-val.night{color:#bc8cff}
+.stat-cell-val.clear{color:#3fb950}
+.stat-cell-val.partly_cloudy{color:#d29922}
+.stat-cell-val.overcast{color:#8090b8}
+
+/* Info cards */
+.cam-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.info-card{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1rem}
+.info-card h4{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:#5060a0;margin-bottom:.75rem}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid #1a1f35;font-size:.82rem}
+.info-row:last-child{border-bottom:none}
+.info-key{color:#8090b8}
+.info-val{color:#c0c8e0;font-weight:600;text-align:right}
+
+.tip-box{background:#0e1828;border:1px solid #1a3050;border-radius:8px;padding:.75rem 1rem;font-size:.78rem;color:#6080a8;line-height:1.6;margin-top:.75rem}
+.tip-box strong{color:#7eb8ff}
+
+@media(max-width:620px){
+  .cam-page{padding:1rem}
+  .cam-stats{grid-template-columns:repeat(2,1fr)}
+  .cam-info-grid{grid-template-columns:1fr}
+  .cam-header{flex-direction:column;align-items:flex-start;gap:.5rem}
+}
+@media(max-width:400px){
+  .cam-page{padding:.85rem}
+  .cam-stats{grid-template-columns:1fr 1fr}
+  .cam-controls{gap:.5rem}
+  .btn-stream,.btn-snapshot{font-size:.8rem;padding:.45rem .9rem}
+}
+</style>
+</head>
+<body>
+{% include '_nav.html' %}
+
+<main id="main-content">
+<div class="cam-page">
+
+  <div class="cam-header">
+    <div>
+      <div class="cam-title">📷 Sky Camera</div>
+      <div class="cam-subtitle">OV5647 · 5 MP · fisheye lens · Raspberry Pi Camera v1.3</div>
+    </div>
+    <div class="cam-controls">
+      <button class="btn-stream" id="stream-btn" onclick="toggleStream()">▶ Start Live Stream</button>
+      <button class="btn-snapshot" onclick="takeSnapshot()">📷 Refresh Still</button>
+      <span class="stream-note" id="stream-note">Stream auto-stops after 5 min</span>
+    </div>
+  </div>
+
+  <div class="cam-viewer">
+    <div class="cam-img-box" id="cam-img-box">
+      {% if sky.captured_at %}
+      <img id="cam-img" src="/api/camera/latest.jpg" alt="Sky camera" onerror="showNoImg()">
+      {% else %}
+      <div class="cam-noimg" id="cam-noimg">
+        <div class="cam-noimg-icon">📷</div>
+        <div>No image yet — first capture takes ~30 s after startup</div>
+      </div>
+      <img id="cam-img" src="" alt="" style="display:none" onerror="showNoImg()">
+      {% endif %}
+    </div>
+    <div class="cam-overlay">
+      <span class="cam-badge" id="cam-condition-badge">
+        <span id="cam-cond-icon">{{ '🌙' if sky.condition == 'night' else '☀️' if sky.condition == 'clear' else '⛅' if sky.condition == 'partly_cloudy' else '☁️' if sky.condition == 'overcast' else '—' }}</span>
+        <span id="cam-cond-label">{{ 'Night sky' if sky.condition == 'night' else 'Clear' if sky.condition == 'clear' else 'Partly Cloudy' if sky.condition == 'partly_cloudy' else 'Overcast' if sky.condition == 'overcast' else 'Loading…' }}</span>
+      </span>
+      <span class="cam-timestamp" id="cam-ts">
+        {% if sky.captured_at %}Updated {{ sky.captured_at[11:16] }}{% else %}No image yet{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="cam-stats">
+    <div class="stat-cell">
+      <div class="stat-cell-label">Condition</div>
+      <div class="stat-cell-val {{ sky.condition or '' }}" id="stat-cond">
+        {{ 'Night 🌙' if sky.condition == 'night' else 'Clear ☀️' if sky.condition == 'clear' else 'Part. Cloudy ⛅' if sky.condition == 'partly_cloudy' else 'Overcast ☁️' if sky.condition == 'overcast' else '—' }}
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">Cloud Cover</div>
+      <div class="stat-cell-val" id="stat-cloud">{{ sky.cloud_cover_pct|string + '%' if sky.cloud_cover_pct is not none else '—' }}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">Brightness</div>
+      <div class="stat-cell-val" id="stat-bright">{{ sky.brightness|string if sky.brightness is not none else '—' }}<small style="font-size:.6rem;color:#4a5890;font-weight:400"> /255</small></div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">Auto-capture</div>
+      <div class="stat-cell-val" style="font-size:.82rem" id="stat-interval">every 2 min</div>
+    </div>
+  </div>
+
+  <div class="cam-info-grid">
+    <div class="info-card">
+      <h4>Camera Hardware</h4>
+      <div class="info-row"><span class="info-key">Sensor</span><span class="info-val">OV5647 (5 MP)</span></div>
+      <div class="info-row"><span class="info-key">Lens</span><span class="info-val">Fisheye clip-on</span></div>
+      <div class="info-row"><span class="info-key">Modes</span><span class="info-val">640×480 @ 62fps · 1296×972 @ 46fps</span></div>
+      <div class="info-row"><span class="info-key">Still res.</span><span class="info-val">1296 × 972</span></div>
+      <div class="info-row"><span class="info-key">Stream res.</span><span class="info-val">640 × 480 · 10 fps</span></div>
+      <div class="tip-box">
+        <strong>Fisheye tip:</strong> the wide-angle lens captures most of the sky hemisphere in one frame — ideal for cloud cover estimation and all-sky meteor detection at night.
+      </div>
+    </div>
+    <div class="info-card">
+      <h4>Sky Analysis</h4>
+      <div class="info-row"><span class="info-key">Method</span><span class="info-val">Pixel colour analysis (Pillow)</span></div>
+      <div class="info-row"><span class="info-key">Cloud detect</span><span class="info-val">Gray pixel ratio vs. blue-dominant</span></div>
+      <div class="info-row"><span class="info-key">R / G / B mean</span>
+        <span class="info-val" id="stat-rgb">
+          {% if sky.r_mean is not none %}{{ sky.r_mean }} / {{ sky.g_mean }} / {{ sky.b_mean }}{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="info-row"><span class="info-key">Last analysis</span><span class="info-val" id="stat-at">
+        {% if sky.captured_at %}{{ sky.captured_at[11:16] }}{% else %}—{% endif %}
+      </span></div>
+      <div class="tip-box">
+        <strong>Daytime:</strong> Blue sky has high B mean and low cloud cover. Clouds push R/G/B closer together. <strong>Night:</strong> all three channels drop near zero.
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<script>
+const COND_ICONS  = {clear:'☀️', partly_cloudy:'⛅', overcast:'☁️', night:'🌙', unknown:'—'};
+const COND_LABELS = {clear:'Clear ☀️', partly_cloudy:'Part. Cloudy ⛅', overcast:'Overcast ☁️', night:'Night 🌙', unknown:'—'};
+let _streaming = false;
+let _streamTimer = null;
+
+function showNoImg() {
+  document.getElementById('cam-img').style.display = 'none';
+  const box = document.getElementById('cam-img-box');
+  let noimg = document.getElementById('cam-noimg');
+  if (!noimg) {
+    noimg = document.createElement('div');
+    noimg.id = 'cam-noimg';
+    noimg.className = 'cam-noimg';
+    noimg.innerHTML = '<div class="cam-noimg-icon">📷</div><div>Image unavailable</div>';
+    box.insertBefore(noimg, document.getElementById('cam-img'));
+  }
+}
+
+function toggleStream() {
+  if (!_streaming) startStream(); else stopStream();
+}
+
+function startStream() {
+  _streaming = true;
+  const btn = document.getElementById('stream-btn');
+  btn.textContent = '⏹ Stop Stream';
+  btn.classList.add('streaming');
+  document.getElementById('stream-note').textContent = 'Auto-stops after 5 min';
+  const img = document.getElementById('cam-img');
+  img.style.display = 'block';
+  const noimg = document.getElementById('cam-noimg');
+  if (noimg) noimg.style.display = 'none';
+  img.src = '/api/camera/stream?' + Date.now();
+  // Auto-stop after 5 minutes
+  _streamTimer = setTimeout(stopStream, 5 * 60 * 1000);
+}
+
+function stopStream() {
+  _streaming = false;
+  clearTimeout(_streamTimer);
+  const btn = document.getElementById('stream-btn');
+  btn.textContent = '▶ Start Live Stream';
+  btn.classList.remove('streaming');
+  document.getElementById('stream-note').textContent = 'Stream auto-stops after 5 min';
+  // Switch back to latest still
+  const img = document.getElementById('cam-img');
+  img.src = '/api/camera/latest.jpg?' + Date.now();
+}
+
+function takeSnapshot() {
+  if (_streaming) { stopStream(); return; }
+  const img = document.getElementById('cam-img');
+  img.src = '/api/camera/latest.jpg?' + Date.now();
+}
+
+async function pollSky() {
+  if (_streaming) return;
+  try {
+    const d = await fetch('/api/camera/sky').then(r => r.json());
+    const condIcon  = COND_ICONS[d.condition]  || '—';
+    const condLabel = COND_LABELS[d.condition] || '—';
+    document.getElementById('cam-cond-icon').textContent  = condIcon;
+    document.getElementById('cam-cond-label').textContent = condLabel.split(' ')[0];
+    document.getElementById('stat-cond').textContent   = condLabel;
+    document.getElementById('stat-cond').className = 'stat-cell-val ' + (d.condition || '');
+    document.getElementById('stat-cloud').textContent  = d.cloud_cover_pct != null ? d.cloud_cover_pct + '%' : '—';
+    document.getElementById('stat-bright').innerHTML   = d.brightness != null ? d.brightness + '<small style="font-size:.6rem;color:#4a5890;font-weight:400"> /255</small>' : '—';
+    if (d.r_mean != null) document.getElementById('stat-rgb').textContent = d.r_mean + ' / ' + d.g_mean + ' / ' + d.b_mean;
+    if (d.captured_at) {
+      const t = new Date(d.captured_at);
+      const ts = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      document.getElementById('cam-ts').textContent   = 'Updated ' + ts;
+      document.getElementById('stat-at').textContent  = ts;
+    }
+  } catch(_) {}
+}
+
+// Poll sky analysis every 30s; refresh still image every 2min
+pollSky();
+setInterval(pollSky, 30000);
+setInterval(function() {
+  if (!_streaming) {
+    const img = document.getElementById('cam-img');
+    if (img) img.src = '/api/camera/latest.jpg?' + Date.now();
+  }
+}, 120000);
+</script>
+</body>
+</html>

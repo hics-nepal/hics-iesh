@@ -1,493 +1,500 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>HICS IESH Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --bg:      #0d1117;
-            --surface: #161b22;
-            --border:  #30363d;
-            --text:    #e6edf3;
-            --muted:   #8b949e;
-            --green:   #3fb950;
-            --blue:    #58a6ff;
-            --yellow:  #d29922;
-            --orange:  #f0883e;
-            --red:     #f85149;
-            --purple:  #bc8cff;
-            --teal:    #39d353;
-        }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg); color: var(--text);
-            padding: 12px; font-size: 14px; min-height: 100vh;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HICS IESH — Live Dashboard</title>
+<meta name="description" content="Live environmental sensor data from the HICS Integrated Environmental Smart Hub station in Nepal.">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* CSS vars defined in style.css — override dashboard-specific ones here */
+:root{
+  --bg:#0d1117; --surface:#141728; --surface2:#1a1f35;
+  --border:#1e2235; --border2:#2a2f55;
+  --text:#e8eaf0; --muted:#8090b8;
+  --green:#3fb950; --blue:#58a6ff; --yellow:#d29922;
+  --orange:#f0883e; --red:#f85149; --purple:#bc8cff;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:.875rem;min-height:100vh}
+main{padding:14px 16px 32px}
 
-        /* Header */
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
-        .header-left h1 { font-size: 1.05rem; color: var(--blue); letter-spacing: 0.5px; }
-        .header-left h1 span { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
-        .header-left p { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
-        .header-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 12px; font-size: 0.68rem; font-weight: 600; }
-        .badge-green  { background: rgba(63,185,80,0.12);  color: var(--green);  border: 1px solid rgba(63,185,80,0.25); }
-        .badge-red    { background: rgba(248,81,73,0.12);  color: var(--red);    border: 1px solid rgba(248,81,73,0.25); }
-        .badge-blue   { background: rgba(88,166,255,0.12); color: var(--blue);   border: 1px solid rgba(88,166,255,0.25); }
-        .badge-muted  { background: rgba(139,148,158,0.1); color: var(--muted);  border: 1px solid rgba(139,148,158,0.2); }
-        .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* ── Section ── */
+.section{margin-top:20px}
+.section-label{
+  display:flex;align-items:center;gap:8px;
+  font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;
+  padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--border);
+}
+.section-icon{font-size:1rem;line-height:1}
 
-        /* Section labels */
-        .section { margin-top: 18px; }
-        .section-label {
-            font-size: 0.62rem; color: var(--muted); text-transform: uppercase;
-            letter-spacing: 2px; padding-bottom: 6px; margin-bottom: 10px;
-            border-bottom: 1px solid var(--border);
-        }
+/* ── Status bar ── */
+.status-bar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:8px 14px;margin-bottom:4px;font-size:.75rem;
+}
+.status-bar #status{color:var(--muted)}
+.badge-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:.68rem;font-weight:600}
+.badge-green {background:rgba(63,185,80,.12); color:var(--green); border:1px solid rgba(63,185,80,.25)}
+.badge-red   {background:rgba(248,81,73,.12); color:var(--red);   border:1px solid rgba(248,81,73,.25)}
+.badge-blue  {background:rgba(88,166,255,.12);color:var(--blue);  border:1px solid rgba(88,166,255,.25)}
+.badge-muted {background:rgba(139,148,158,.1);color:var(--muted); border:1px solid rgba(139,148,158,.2)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
 
-        /* Metric cards */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 8px; padding: 14px 12px; text-align: center;
-        }
-        .card-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        .card-val   { font-size: 1.65rem; font-weight: 700; line-height: 1.1; }
-        .card-unit  { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
-        .card-sub   { font-size: 0.68rem; color: var(--muted); margin-top: 6px; font-style: italic; }
+/* ── Metric cards ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:16px 14px;text-align:center;
+  transition:border-color .2s;
+}
+.card:hover{border-color:var(--border2)}
+.card-icon{font-size:1.3rem;margin-bottom:6px;line-height:1}
+.card-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.card-val{font-size:1.75rem;font-weight:700;line-height:1;letter-spacing:-.5px}
+.card-unit{font-size:.72rem;color:var(--muted);margin-top:5px}
+.card-sub{font-size:.72rem;color:var(--muted);margin-top:7px;font-style:italic}
 
-        /* Gauge bar */
-        .gauge { margin-top: 10px; }
-        .gauge-track { background: var(--border); border-radius: 4px; overflow: hidden; }
-        .gauge-fill  { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-        .gauge-sm .gauge-track { height: 5px; }
-        .gauge-md .gauge-track { height: 8px; }
+/* ── Gauge ── */
+.gauge{margin-top:10px}
+.gauge-track{background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.gauge-sm .gauge-track{height:5px}
+.gauge-md .gauge-track{height:9px}
+.gauge-labels{display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted);margin-top:3px}
 
-        /* AQI / status badges */
-        .status-pill {
-            display: inline-block; margin-top: 8px;
-            padding: 2px 10px; border-radius: 10px; font-size: 0.68rem; font-weight: 600;
-        }
+/* ── AQI pills ── */
+.status-pill{
+  display:inline-block;margin-top:8px;padding:2px 10px;
+  border-radius:10px;font-size:.68rem;font-weight:600
+}
 
-        /* Charts */
-        .chart-section { margin-top: 10px; }
-        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
-        .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
-        .chart-wrap h3 {
-            font-size: 0.65rem; color: var(--muted); text-transform: uppercase;
-            letter-spacing: 1px; margin-bottom: 10px;
-        }
-        canvas { max-height: 170px; width: 100% !important; }
+/* ── Charts ── */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.chart-wrap h3{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+canvas{max-height:170px;width:100%!important}
 
-        /* System panel */
-        .sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; }
-        .sys-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 8px; padding: 10px 12px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .sys-icon { font-size: 1.1rem; line-height: 1; }
-        .sys-info .label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-        .sys-info .val   { font-size: 0.82rem; font-weight: 600; margin-top: 2px; }
+/* ── System status ── */
+.sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.sys-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px
+}
+.sys-icon{font-size:1.2rem;line-height:1;flex-shrink:0}
+.sys-info .label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.sys-info .val{font-size:.88rem;font-weight:600;margin-top:3px}
 
-        /* Colors */
-        .c-green  { color: var(--green); }
-        .c-blue   { color: var(--blue); }
-        .c-yellow { color: var(--yellow); }
-        .c-orange { color: var(--orange); }
-        .c-red    { color: var(--red); }
-        .c-purple { color: var(--purple); }
-        .c-muted  { color: var(--muted); }
+/* ── Colors ── */
+.c-green{color:var(--green)} .c-blue{color:var(--blue)} .c-yellow{color:var(--yellow)}
+.c-orange{color:var(--orange)} .c-red{color:var(--red)} .c-purple{color:var(--purple)} .c-muted{color:var(--muted)}
 
-        /* Responsive */
-        @media (max-width: 460px) {
-            .grid       { grid-template-columns: repeat(2, 1fr); }
-            .chart-grid { grid-template-columns: 1fr; }
-            .sys-grid   { grid-template-columns: repeat(2, 1fr); }
-        }
-    </style>
+/* ── Soil card wide span ── */
+.card-wide{grid-column:span 2}
+
+/* ── Sky Camera card ── */
+.sky-card{display:flex;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.sky-img-wrap{flex:0 0 auto;width:220px;background:#0a0c18;position:relative;overflow:hidden;min-height:140px;display:flex;align-items:center;justify-content:center}
+.sky-img{width:220px;height:165px;object-fit:cover;display:block}
+.sky-img-wrap.sky-noimg .sky-img{display:none}
+.sky-noimg-msg{display:none;color:var(--muted);font-size:.78rem;text-align:center;line-height:1.6;padding:8px}
+.sky-img-wrap.sky-noimg .sky-noimg-msg{display:block}
+.sky-meta{flex:1;padding:.85rem;display:flex;flex-direction:column;gap:.6rem;justify-content:center}
+.sky-condition{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:700}
+.sky-stats{display:flex;gap:1rem;flex-wrap:wrap}
+.sky-stat{display:flex;flex-direction:column;gap:.15rem}
+.sky-stat-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.sky-stat-val{font-size:.95rem;font-weight:700;color:var(--accent-l);font-variant-numeric:tabular-nums}
+.sky-refresh-note{font-size:.68rem;color:#404870;margin-top:auto}
+@media(max-width:480px){
+  .sky-card{flex-direction:column}
+  .sky-img-wrap{width:100%;min-height:unset}
+  .sky-img{width:100%;height:auto;max-height:180px}
+}
+
+/* ── Responsive ── */
+@media(max-width:520px){
+  main{padding:10px 10px 28px}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .card-wide{grid-column:span 1}
+  .chart-grid{grid-template-columns:1fr}
+  .sys-grid{grid-template-columns:repeat(2,1fr)}
+  .card-val{font-size:1.5rem}
+}
+@media(max-width:420px){
+  main{padding:8px 8px 22px}
+  .status-bar{flex-direction:column;align-items:flex-start;gap:6px;padding:8px 10px}
+  .card{padding:12px 10px}
+  .card-val{font-size:1.35rem}
+  .sys-card{padding:10px 12px}
+  .section{margin-top:16px}
+}
+@media(max-width:360px){
+  .grid{grid-template-columns:1fr}
+  .sys-grid{grid-template-columns:1fr}
+  .card-val{font-size:1.25rem}
+}
+</style>
 </head>
 <body>
+{% include '_nav.html' %}
 
-<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
-<div class="header">
-    <div class="header-left">
-        <h1>HICS IESH <span>— Integrated Environmental Smart Hub</span></h1>
-        <p id="status">Connecting to station...</p>
-    </div>
-    <div class="header-badges">
-        <span id="wifi-badge" class="badge badge-muted"><span class="dot"></span>...</span>
-        <span id="alt-badge"  class="badge badge-blue" title="Estimated from barometric pressure">...</span>
-    </div>
+<main id="main-content">
+
+<!-- Status bar -->
+<div class="status-bar" role="status">
+  <span id="status">Connecting to station…</span>
+  <div class="badge-row">
+    <span id="wifi-badge" class="badge badge-muted"><span class="dot"></span>…</span>
+    <span id="alt-badge"  class="badge badge-blue" title="Estimated altitude from barometric pressure">…</span>
+  </div>
 </div>
 
-<!-- ── CLIMATE MODULE ─────────────────────────────────────────────────────── -->
-<div class="section">
-    <div class="section-label">Climate Module</div>
-    <div class="grid">
-        <div class="card">
-            <div class="card-label">Air Temperature</div>
-            <div class="card-val c-green" id="air_temp">--</div>
-            <div class="card-unit">°C</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Humidity</div>
-            <div class="card-val c-blue" id="air_hum">--</div>
-            <div class="card-unit">%</div>
-            <div class="gauge gauge-sm">
-                <div class="gauge-track"><div class="gauge-fill" id="hum-bar" style="background:var(--blue)"></div></div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-label">Heat Index</div>
-            <div class="card-val c-orange" id="heat_index">--</div>
-            <div class="card-unit">°C</div>
-            <div class="card-sub" id="heat-feel">perceived temperature</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Pressure</div>
-            <div class="card-val c-blue" id="pressure">--</div>
-            <div class="card-unit">hPa</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Altitude (est.)</div>
-            <div class="card-val c-purple" id="altitude">--</div>
-            <div class="card-unit">m ASL</div>
-            <div class="card-sub">barometric formula</div>
-        </div>
+<!-- Climate -->
+<section class="section" aria-labelledby="climate-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">🌡️</span><span id="climate-label">Climate Module</span></div>
+  <div class="grid" role="list">
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🌡️</div>
+      <div class="card-label">Air Temperature</div>
+      <div class="card-val c-green" id="air_temp" aria-label="Air temperature">--</div>
+      <div class="card-unit">°C</div>
     </div>
-</div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">💧</div>
+      <div class="card-label">Humidity</div>
+      <div class="card-val c-blue" id="air_hum" aria-label="Relative humidity">--</div>
+      <div class="card-unit">%</div>
+      <div class="gauge gauge-sm" role="presentation">
+        <div class="gauge-track"><div class="gauge-fill" id="hum-bar" style="background:var(--blue)"></div></div>
+      </div>
+    </div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🔥</div>
+      <div class="card-label">Heat Index</div>
+      <div class="card-val c-orange" id="heat_index" aria-label="Heat index">--</div>
+      <div class="card-unit">°C</div>
+      <div class="card-sub" id="heat-feel">perceived temperature</div>
+    </div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🔵</div>
+      <div class="card-label">Pressure</div>
+      <div class="card-val c-blue" id="pressure" aria-label="Barometric pressure">--</div>
+      <div class="card-unit">hPa</div>
+    </div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">⛰️</div>
+      <div class="card-label">Altitude (est.)</div>
+      <div class="card-val c-purple" id="altitude" aria-label="Estimated altitude">--</div>
+      <div class="card-unit">m ASL</div>
+      <div class="card-sub">barometric formula</div>
+    </div>
+  </div>
+</section>
 
-<!-- ── SOIL / AGRICULTURAL MODULE ────────────────────────────────────────── -->
-<div class="section">
-    <div class="section-label">Soil / Agricultural Module</div>
-    <div class="grid">
-        <div class="card">
-            <div class="card-label">Soil Temperature</div>
-            <div class="card-val c-yellow" id="soil_temp">--</div>
-            <div class="card-unit">°C</div>
-        </div>
-        <div class="card" style="grid-column: span 2">
-            <div class="card-label">Soil Moisture</div>
-            <div class="card-val c-green" id="soil_moist">--</div>
-            <div class="card-unit">%</div>
-            <div class="gauge gauge-md" style="margin-top:10px">
-                <div class="gauge-track"><div class="gauge-fill" id="soil-bar" style="background:var(--green)"></div></div>
-            </div>
-            <div class="card-sub" id="soil-label">--</div>
-        </div>
+<!-- Soil -->
+<section class="section" aria-labelledby="soil-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">🌱</span><span id="soil-label">Soil / Agricultural Module</span></div>
+  <div class="grid" role="list">
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🌡️</div>
+      <div class="card-label">Soil Temperature</div>
+      <div class="card-val c-yellow" id="soil_temp" aria-label="Soil temperature">--</div>
+      <div class="card-unit">°C</div>
     </div>
-</div>
+    <div class="card card-wide" role="listitem">
+      <div class="card-icon" aria-hidden="true">💦</div>
+      <div class="card-label">Soil Moisture</div>
+      <div class="card-val c-green" id="soil_moist" aria-label="Soil moisture">--</div>
+      <div class="card-unit">%</div>
+      <div class="gauge gauge-md" role="presentation">
+        <div class="gauge-track"><div class="gauge-fill" id="soil-bar" style="background:var(--green)"></div></div>
+      </div>
+      <div class="gauge-labels"><span>Dry</span><span>Moderate</span><span>Saturated</span></div>
+      <div class="card-sub" id="soil-desc">--</div>
+    </div>
+  </div>
+</section>
 
-<!-- ── AIR QUALITY MODULE ─────────────────────────────────────────────────── -->
-<div class="section">
-    <div class="section-label">Air Quality Module</div>
-    <div class="grid">
-        <div class="card">
-            <div class="card-label">CO Level (MQ-7)</div>
-            <div class="card-val c-orange" id="mq7">--</div>
-            <div class="card-unit">raw ADC · <span id="mq7-v">--</span> V sensor</div>
-            <div class="gauge gauge-sm" style="margin-top:8px">
-                <div class="gauge-track"><div class="gauge-fill" id="mq7-bar" style="background:var(--orange)"></div></div>
-            </div>
-            <span class="status-pill" id="co-badge">--</span>
-        </div>
-        <div class="card">
-            <div class="card-label">Air Quality (MQ-135)</div>
-            <div class="card-val c-red" id="mq135">--</div>
-            <div class="card-unit">raw ADC · <span id="mq135-v">--</span> V sensor</div>
-            <div class="gauge gauge-sm" style="margin-top:8px">
-                <div class="gauge-track"><div class="gauge-fill" id="mq135-bar" style="background:var(--red)"></div></div>
-            </div>
-            <span class="status-pill" id="aqi-badge">--</span>
-        </div>
+<!-- Air Quality -->
+<section class="section" aria-labelledby="air-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">💨</span><span id="air-label">Air Quality Module</span></div>
+  <div class="grid" role="list">
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🏭</div>
+      <div class="card-label">CO Level (MQ-7)</div>
+      <div class="card-val c-orange" id="mq7" aria-label="CO level raw ADC">--</div>
+      <div class="card-unit">raw ADC &nbsp;·&nbsp; <span id="mq7-v">--</span> V</div>
+      <div class="gauge gauge-sm" role="presentation">
+        <div class="gauge-track"><div class="gauge-fill" id="mq7-bar" style="background:var(--orange)"></div></div>
+      </div>
+      <span class="status-pill" id="co-badge" role="status">--</span>
     </div>
-</div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🌫️</div>
+      <div class="card-label">Air Quality (MQ-135)</div>
+      <div class="card-val c-red" id="mq135" aria-label="Air quality raw ADC">--</div>
+      <div class="card-unit">raw ADC &nbsp;·&nbsp; <span id="mq135-v">--</span> V</div>
+      <div class="gauge gauge-sm" role="presentation">
+        <div class="gauge-track"><div class="gauge-fill" id="mq135-bar" style="background:var(--red)"></div></div>
+      </div>
+      <span class="status-pill" id="aqi-badge" role="status">--</span>
+    </div>
+  </div>
+</section>
 
-<!-- ── SENSOR HISTORY CHARTS ──────────────────────────────────────────────── -->
-<div class="section">
-    <div class="section-label">Sensor History</div>
-    <div class="chart-grid">
-        <div class="chart-wrap">
-            <h3>Temperature (°C)</h3>
-            <canvas id="tempChart"></canvas>
-        </div>
-        <div class="chart-wrap">
-            <h3>Humidity &amp; Soil Moisture (%)</h3>
-            <canvas id="humChart"></canvas>
-        </div>
-        <div class="chart-wrap">
-            <h3>Pressure (hPa) &amp; Altitude (m)</h3>
-            <canvas id="presChart"></canvas>
-        </div>
-        <div class="chart-wrap">
-            <h3>Gas Sensors — raw ADC</h3>
-            <canvas id="gasChart"></canvas>
-        </div>
+<!-- Charts -->
+<section class="section" aria-labelledby="history-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">📈</span><span id="history-label">Sensor History</span></div>
+  <div class="chart-grid">
+    <div class="chart-wrap">
+      <h3>Temperature (°C)</h3>
+      <canvas id="tempChart" aria-label="Temperature history chart" role="img"></canvas>
     </div>
-</div>
+    <div class="chart-wrap">
+      <h3>Humidity &amp; Soil Moisture (%)</h3>
+      <canvas id="humChart" aria-label="Humidity and soil moisture history chart" role="img"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Pressure (hPa) &amp; Altitude (m)</h3>
+      <canvas id="presChart" aria-label="Pressure and altitude history chart" role="img"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Gas Sensors — raw ADC</h3>
+      <canvas id="gasChart" aria-label="Gas sensor history chart" role="img"></canvas>
+    </div>
+  </div>
+</section>
 
-<!-- ── SYSTEM STATUS ───────────────────────────────────────────────────────── -->
-<div class="section" style="margin-bottom:24px">
-    <div class="section-label">System Status</div>
-    <div class="sys-grid">
-        <div class="sys-card">
-            <div class="sys-icon">🕐</div>
-            <div class="sys-info">
-                <div class="label">Last Reading</div>
-                <div class="val" id="sys-time">--</div>
-            </div>
-        </div>
-        <div class="sys-card">
-            <div class="sys-icon">📡</div>
-            <div class="sys-info">
-                <div class="label">Internet</div>
-                <div class="val" id="sys-wifi">--</div>
-            </div>
-        </div>
-        <div class="sys-card">
-            <div class="sys-icon">🗄️</div>
-            <div class="sys-info">
-                <div class="label">DB Records</div>
-                <div class="val" id="sys-db">--</div>
-            </div>
-        </div>
-        <div class="sys-card">
-            <div class="sys-icon">☁️</div>
-            <div class="sys-info">
-                <div class="label">API Sync</div>
-                <div class="val" id="sys-api">--</div>
-            </div>
-        </div>
+<!-- Sky Camera -->
+<section class="section" aria-labelledby="sky-label">
+  <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+    <span><span class="section-icon" aria-hidden="true">📷</span><span id="sky-label">Sky Camera</span></span>
+    <a href="/camera" style="font-size:.75rem;color:#7eb8ff;text-decoration:none;font-weight:600;white-space:nowrap">▶ Live Stream →</a>
+  </div>
+  <div class="sky-card">
+    <div class="sky-img-wrap">
+      <img id="sky-img" src="/api/camera/latest.jpg" alt="Live sky view" class="sky-img" onerror="this.parentElement.classList.add('sky-noimg')">
+      <div class="sky-noimg-msg" aria-hidden="true">📷 No image yet<br><small>First capture takes ~30 s after startup</small></div>
     </div>
-</div>
+    <div class="sky-meta">
+      <div class="sky-condition" id="sky-condition-badge">
+        <span id="sky-cond-icon">—</span>
+        <span id="sky-cond-label">Loading…</span>
+      </div>
+      <div class="sky-stats">
+        <div class="sky-stat"><span class="sky-stat-label">Cloud cover</span><span class="sky-stat-val" id="sky-cloud">—</span></div>
+        <div class="sky-stat"><span class="sky-stat-label">Brightness</span><span class="sky-stat-val" id="sky-bright">—</span></div>
+      </div>
+      <div class="sky-refresh-note" id="sky-updated">auto-refreshes every 2 min</div>
+    </div>
+  </div>
+</section>
+
+<!-- Learning Portal -->
+<section class="section" aria-labelledby="learn-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">🎓</span><span id="learn-label">Learning Portal</span></div>
+  <p style="font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:12px">Nepal CDC-aligned science activities powered by live data from this station — Grades 6–12 and undergraduate.</p>
+  <div class="learn-portal-grid" role="list">
+    <a class="learn-mod-card" href="/learn/climate" style="--mc:#3fb950" role="listitem" aria-label="Climate module">
+      <span class="lm-icon" aria-hidden="true">🌡️</span>
+      <div><div class="lm-title">Climate</div><div class="lm-desc">Temperature, humidity, pressure</div></div>
+      <span class="lm-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="learn-mod-card" href="/learn/soil" style="--mc:#d29922" role="listitem" aria-label="Soil module">
+      <span class="lm-icon" aria-hidden="true">🌱</span>
+      <div><div class="lm-title">Soil</div><div class="lm-desc">Temperature, moisture, agriculture</div></div>
+      <span class="lm-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="learn-mod-card" href="/learn/air" style="--mc:#f0883e" role="listitem" aria-label="Air Quality module">
+      <span class="lm-icon" aria-hidden="true">💨</span>
+      <div><div class="lm-title">Air Quality</div><div class="lm-desc">CO, gas sensors, air quality</div></div>
+      <span class="lm-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="learn-mod-card" href="/learn/data" style="--mc:#58a6ff" role="listitem" aria-label="Data Science module">
+      <span class="lm-icon" aria-hidden="true">📊</span>
+      <div><div class="lm-title">Data Science</div><div class="lm-desc">Statistics, patterns, systems</div></div>
+      <span class="lm-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="learn-mod-card" href="/learn/environment" style="--mc:#56d364" role="listitem" aria-label="Environment module">
+      <span class="lm-icon" aria-hidden="true">🌍</span>
+      <div><div class="lm-title">Environment</div><div class="lm-desc">Ecology, climate justice, policy</div></div>
+      <span class="lm-arrow" aria-hidden="true">›</span>
+    </a>
+  </div>
+  <a href="/learn" class="learn-all-btn" aria-label="Open Learning Portal">View all 25 activities →</a>
+</section>
+
+<!-- System Status -->
+<section class="section" style="margin-bottom:16px" aria-labelledby="sys-label">
+  <div class="section-label"><span class="section-icon" aria-hidden="true">⚙️</span><span id="sys-label">System Status</span></div>
+  <div class="sys-grid" role="list">
+    <div class="sys-card" role="listitem">
+      <div class="sys-icon" aria-hidden="true">🕐</div>
+      <div class="sys-info"><div class="label">Last Reading</div><div class="val" id="sys-time">--</div></div>
+    </div>
+    <div class="sys-card" role="listitem">
+      <div class="sys-icon" aria-hidden="true">📡</div>
+      <div class="sys-info"><div class="label">Internet</div><div class="val" id="sys-wifi">--</div></div>
+    </div>
+    <div class="sys-card" role="listitem">
+      <div class="sys-icon" aria-hidden="true">🗄️</div>
+      <div class="sys-info"><div class="label">DB Records</div><div class="val" id="sys-db">--</div></div>
+    </div>
+    <div class="sys-card" role="listitem">
+      <div class="sys-icon" aria-hidden="true">☁️</div>
+      <div class="sys-info"><div class="label">API Sync</div><div class="val" id="sys-api">--</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
 
 <script>
-// Palette
-const C = {
-    air:    '#3fb950',
-    soil_t: '#d29922',
-    soil_m: '#56d364',
-    hum:    '#79c0ff',
-    pres:   '#58a6ff',
-    alt:    '#bc8cff',
-    mq7:    '#f0883e',
-    mq135:  '#f85149',
-};
+const C={air:'#3fb950',soil_t:'#d29922',soil_m:'#56d364',hum:'#79c0ff',pres:'#58a6ff',alt:'#bc8cff',mq7:'#f0883e',mq135:'#f85149'};
+const GRID='#21262d';
+const TICK={color:'#8b949e',font:{size:10}};
+const LEGEND={labels:{color:'#8b949e',boxWidth:10,font:{size:11}}};
 
-const GRID_COLOR = '#21262d';
-const TICK = { color: '#8b949e', font: { size: 10 } };
-const LEGEND = { labels: { color: '#8b949e', boxWidth: 10, font: { size: 11 } } };
-
-function baseScale(title) {
-    return {
-        ticks: TICK,
-        grid: { color: GRID_COLOR },
-        title: title ? { display: true, text: title, color: '#8b949e', font: { size: 10 } } : undefined,
-    };
+function baseScale(title){
+  return{ticks:TICK,grid:{color:GRID},title:title?{display:true,text:title,color:'#8b949e',font:{size:10}}:undefined};
+}
+function mkChart(id,datasets,yLabel,y2Label){
+  const scales={
+    x:{...baseScale(),ticks:{...TICK,maxTicksLimit:8}},
+    y:{...baseScale(yLabel),position:'left'},
+  };
+  if(y2Label) scales.y2={...baseScale(y2Label),position:'right',grid:{drawOnChartArea:false}};
+  return new Chart(document.getElementById(id).getContext('2d'),{
+    type:'line',
+    data:{labels:[],datasets:datasets.map(d=>({
+      label:d.label,borderColor:d.color,yAxisID:d.axis||'y',
+      data:[],tension:0.3,pointRadius:1,borderWidth:1.5,fill:false,
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND},scales},
+  });
 }
 
-function mkChart(id, datasets, yLabel, y2Label) {
-    const scales = {
-        x: { ...baseScale(), ticks: { ...TICK, maxTicksLimit: 8 } },
-        y: { ...baseScale(yLabel), position: 'left' },
-    };
-    if (y2Label) {
-        scales.y2 = { ...baseScale(y2Label), position: 'right', grid: { drawOnChartArea: false } };
+const tempChart=mkChart('tempChart',[{label:'Air Temp (°C)',color:C.air},{label:'Soil Temp (°C)',color:C.soil_t}],'°C');
+const humChart=mkChart('humChart',[{label:'Humidity (%)',color:C.hum},{label:'Soil Moisture (%)',color:C.soil_m}],'%');
+const presChart=mkChart('presChart',[{label:'Pressure (hPa)',color:C.pres},{label:'Altitude (m)',color:C.alt,axis:'y2'}],'hPa','m');
+const gasChart=mkChart('gasChart',[{label:'CO MQ-7',color:C.mq7},{label:'AQI MQ-135',color:C.mq135}],'raw ADC');
+
+function fmt(v,dp=1){return(v!=null&&v!=='')?Number(v).toFixed(dp):'--'}
+function setBar(id,pct,color){const el=document.getElementById(id);if(!el)return;el.style.width=Math.min(100,Math.max(0,pct||0))+'%';if(color)el.style.background=color}
+function setPill(id,text,color){const el=document.getElementById(id);if(!el)return;el.textContent=text;el.style.background=color+'22';el.style.color=color;el.style.border=`1px solid ${color}55`}
+function coLevel(r){if(r==null)return['--','#8b949e'];if(r<300)return['Low','#3fb950'];if(r<1000)return['Medium','#d29922'];return['High','#f85149']}
+function aqiLevel(r){if(r==null)return['--','#8b949e'];if(r<500)return['Good','#3fb950'];if(r<1500)return['Moderate','#d29922'];if(r<3000)return['Poor','#f0883e'];return['Hazardous','#f85149']}
+function soilLabel(p){if(p==null)return'--';if(p<15)return'Very Dry';if(p<35)return'Dry';if(p<55)return'Moderate';if(p<75)return'Moist';return'Saturated'}
+function heatFeeling(h){if(h==null)return'n/a (below 20°C)';if(h<27)return'comfortable';if(h<32)return'caution';if(h<39)return'hot — limit exertion';return'danger — heat stress'}
+
+function updateCards(latest){
+  if(!latest)return;
+  document.getElementById('air_temp').textContent=fmt(latest.air_temp);
+  document.getElementById('air_hum').textContent=fmt(latest.air_hum,0);
+  document.getElementById('pressure').textContent=fmt(latest.pressure);
+  document.getElementById('soil_temp').textContent=fmt(latest.soil_temp);
+  document.getElementById('soil_moist').textContent=fmt(latest.soil_moist,0);
+  document.getElementById('mq7').textContent=latest.mq7_raw??'--';
+  document.getElementById('mq135').textContent=latest.mq135_raw??'--';
+  document.getElementById('mq7-v').textContent=latest.mq7_voltage!=null?Number(latest.mq7_voltage).toFixed(2):'--';
+  document.getElementById('mq135-v').textContent=latest.mq135_voltage!=null?Number(latest.mq135_voltage).toFixed(2):'--';
+  const alt=latest.altitude;
+  document.getElementById('altitude').textContent=alt!=null?Math.round(alt):'--';
+  document.getElementById('alt-badge').textContent=alt!=null?`${Math.round(alt)} m ASL`:'Alt --';
+  const hi=latest.heat_index;
+  document.getElementById('heat_index').textContent=hi!=null?fmt(hi):'--';
+  document.getElementById('heat-feel').textContent=heatFeeling(hi);
+  setBar('hum-bar',latest.air_hum);
+  setBar('soil-bar',latest.soil_moist);
+  document.getElementById('soil-desc').textContent=soilLabel(latest.soil_moist);
+  const[coTxt,coColor]=coLevel(latest.mq7_raw);
+  setPill('co-badge',coTxt,coColor);
+  setBar('mq7-bar',(latest.mq7_raw??0)/40.95,coColor);
+  const[aqiTxt,aqiColor]=aqiLevel(latest.mq135_raw);
+  setPill('aqi-badge',aqiTxt,aqiColor);
+  setBar('mq135-bar',(latest.mq135_raw??0)/40.95,aqiColor);
+  const ts=latest.timestamp||'';
+  document.getElementById('sys-time').textContent=ts?ts.substring(11,19):'--';
+}
+function updateCharts(history){
+  const labels=history.map(r=>r.timestamp?r.timestamp.substring(11,16):'');
+  tempChart.data.labels=labels;
+  tempChart.data.datasets[0].data=history.map(r=>r.air_temp);
+  tempChart.data.datasets[1].data=history.map(r=>r.soil_temp);
+  humChart.data.labels=labels;
+  humChart.data.datasets[0].data=history.map(r=>r.air_hum);
+  humChart.data.datasets[1].data=history.map(r=>r.soil_moist);
+  presChart.data.labels=labels;
+  presChart.data.datasets[0].data=history.map(r=>r.pressure);
+  presChart.data.datasets[1].data=history.map(r=>r.altitude);
+  gasChart.data.labels=labels;
+  gasChart.data.datasets[0].data=history.map(r=>r.mq7_raw);
+  gasChart.data.datasets[1].data=history.map(r=>r.mq135_raw);
+  [tempChart,humChart,presChart,gasChart].forEach(c=>c.update('none'));
+}
+async function pollStatus(){
+  try{
+    const r=await fetch('/api/status');
+    const data=await r.json();
+    const wEl=document.getElementById('sys-wifi');
+    wEl.textContent=data.online?'Connected':'Offline';
+    wEl.style.color=data.online?'#3fb950':'#f85149';
+    const wBadge=document.getElementById('wifi-badge');
+    wBadge.innerHTML=`<span class="dot"></span>${data.online?'Internet OK':'Offline'}`;
+    wBadge.className=data.online?'badge badge-green':'badge badge-red';
+    document.getElementById('sys-db').textContent=(data.db_rows??'--')+' rows';
+    document.getElementById('sys-api').textContent=data.api_key_set?'Configured':'No key set';
+    document.getElementById('sys-api').style.color=data.api_key_set?'#3fb950':'#8b949e';
+    // Update nav pill
+    const pill=document.getElementById('nav-status-pill');
+    if(pill){pill.textContent=data.online?'Online':'Offline';pill.className=data.online?'nav-status':'nav-status offline'}
+  }catch(_){}
+}
+async function poll(){
+  try{
+    const r=await fetch('/api/data');
+    const data=await r.json();
+    updateCards(data.latest);
+    updateCharts(data.history);
+    const ts=data.latest?.timestamp??'';
+    document.getElementById('status').textContent=ts
+      ?`Last reading: ${ts.substring(11,19)}  ·  auto-refreshes every 15 s`
+      :'No data yet — waiting for first DB write (logs every 60 s)';
+  }catch(e){
+    document.getElementById('status').textContent='Connection error — retrying…';
+  }
+}
+poll(); pollStatus();
+setInterval(poll,15000);
+setInterval(pollStatus,30000);
+
+// ── Sky camera ──────────────────────────────────────────────────────────────
+const SKY_ICONS = {clear:'☀️', partly_cloudy:'⛅', overcast:'☁️', night:'🌙', unknown:'❓'};
+const SKY_LABELS = {clear:'Clear', partly_cloudy:'Partly Cloudy', overcast:'Overcast', night:'Night sky', unknown:'Unknown'};
+
+async function pollSky() {
+  try {
+    const r = await fetch('/api/camera/sky');
+    const d = await r.json();
+    document.getElementById('sky-cond-icon').textContent  = SKY_ICONS[d.condition]  || '❓';
+    document.getElementById('sky-cond-label').textContent = SKY_LABELS[d.condition] || 'Unknown';
+    document.getElementById('sky-cloud').textContent  = d.cloud_cover_pct != null ? d.cloud_cover_pct + '%' : '—';
+    document.getElementById('sky-bright').textContent = d.brightness != null ? d.brightness + ' / 255' : '—';
+    if (d.captured_at) {
+      const t = new Date(d.captured_at);
+      document.getElementById('sky-updated').textContent = 'Updated ' + t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     }
-    return new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: datasets.map(d => ({
-                label: d.label, borderColor: d.color, yAxisID: d.axis || 'y',
-                data: [], tension: 0.3, pointRadius: 1, borderWidth: 1.5, fill: false,
-            })),
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: LEGEND },
-            scales,
-        },
-    });
+    // Refresh image with cache-bust
+    const img = document.getElementById('sky-img');
+    img.src = '/api/camera/latest.jpg?t=' + Date.now();
+  } catch(_) {}
 }
-
-const tempChart = mkChart('tempChart', [
-    { label: 'Air Temp (°C)',  color: C.air },
-    { label: 'Soil Temp (°C)', color: C.soil_t },
-], '°C');
-
-const humChart = mkChart('humChart', [
-    { label: 'Humidity (%)',       color: C.hum },
-    { label: 'Soil Moisture (%)',  color: C.soil_m },
-], '%');
-
-const presChart = mkChart('presChart', [
-    { label: 'Pressure (hPa)', color: C.pres },
-    { label: 'Altitude (m)',   color: C.alt, axis: 'y2' },
-], 'hPa', 'm');
-
-const gasChart = mkChart('gasChart', [
-    { label: 'CO MQ-7',    color: C.mq7 },
-    { label: 'AQI MQ-135', color: C.mq135 },
-], 'raw ADC');
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function fmt(v, dp = 1) {
-    return (v != null && v !== '') ? Number(v).toFixed(dp) : '--';
-}
-
-function setBar(id, pct, color) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.width = Math.min(100, Math.max(0, pct || 0)) + '%';
-    if (color) el.style.background = color;
-}
-
-function setPill(id, text, color) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text;
-    el.style.background = color + '22';
-    el.style.color       = color;
-    el.style.border      = `1px solid ${color}55`;
-}
-
-function coLevel(raw) {
-    if (raw == null) return ['--', '#8b949e'];
-    if (raw < 300)  return ['Low',    '#3fb950'];
-    if (raw < 1000) return ['Medium', '#d29922'];
-    return                 ['High',   '#f85149'];
-}
-
-function aqiLevel(raw) {
-    if (raw == null) return ['--', '#8b949e'];
-    if (raw < 500)  return ['Good',      '#3fb950'];
-    if (raw < 1500) return ['Moderate',  '#d29922'];
-    if (raw < 3000) return ['Poor',      '#f0883e'];
-    return                 ['Hazardous', '#f85149'];
-}
-
-function soilLabel(pct) {
-    if (pct == null) return '--';
-    if (pct < 15) return 'Very Dry';
-    if (pct < 35) return 'Dry';
-    if (pct < 55) return 'Moderate';
-    if (pct < 75) return 'Moist';
-    return               'Saturated';
-}
-
-function heatFeeling(hi) {
-    if (hi == null) return 'n/a (below 20°C)';
-    if (hi < 27) return 'comfortable';
-    if (hi < 32) return 'caution';
-    if (hi < 39) return 'hot — limit exertion';
-    return              'danger — heat stress';
-}
-
-// ── Card update ───────────────────────────────────────────────────────────────
-function updateCards(latest) {
-    if (!latest) return;
-
-    document.getElementById('air_temp').textContent   = fmt(latest.air_temp);
-    document.getElementById('air_hum').textContent    = fmt(latest.air_hum, 0);
-    document.getElementById('pressure').textContent   = fmt(latest.pressure);
-    document.getElementById('soil_temp').textContent  = fmt(latest.soil_temp);
-    document.getElementById('soil_moist').textContent = fmt(latest.soil_moist, 0);
-    document.getElementById('mq7').textContent        = latest.mq7_raw   ?? '--';
-    document.getElementById('mq135').textContent      = latest.mq135_raw ?? '--';
-    document.getElementById('mq7-v').textContent      = latest.mq7_voltage   != null ? Number(latest.mq7_voltage).toFixed(2)   : '--';
-    document.getElementById('mq135-v').textContent    = latest.mq135_voltage != null ? Number(latest.mq135_voltage).toFixed(2) : '--';
-
-    const alt = latest.altitude;
-    document.getElementById('altitude').textContent = alt != null ? Math.round(alt) : '--';
-    document.getElementById('alt-badge').textContent = alt != null ? `${Math.round(alt)} m ASL` : 'Alt --';
-
-    const hi = latest.heat_index;
-    document.getElementById('heat_index').textContent = hi != null ? fmt(hi) : '--';
-    document.getElementById('heat-feel').textContent  = heatFeeling(hi);
-
-    setBar('hum-bar',  latest.air_hum);
-    setBar('soil-bar', latest.soil_moist);
-    document.getElementById('soil-label').textContent = soilLabel(latest.soil_moist);
-
-    const [coTxt, coColor] = coLevel(latest.mq7_raw);
-    setPill('co-badge', coTxt, coColor);
-    setBar('mq7-bar', (latest.mq7_raw ?? 0) / 40.95, coColor);
-
-    const [aqiTxt, aqiColor] = aqiLevel(latest.mq135_raw);
-    setPill('aqi-badge', aqiTxt, aqiColor);
-    setBar('mq135-bar', (latest.mq135_raw ?? 0) / 40.95, aqiColor);
-
-    const ts = latest.timestamp || '';
-    document.getElementById('sys-time').textContent = ts ? ts.substring(11, 19) : '--';
-}
-
-// ── Chart update ──────────────────────────────────────────────────────────────
-function updateCharts(history) {
-    const labels = history.map(r => r.timestamp ? r.timestamp.substring(11, 16) : '');
-
-    tempChart.data.labels = labels;
-    tempChart.data.datasets[0].data = history.map(r => r.air_temp);
-    tempChart.data.datasets[1].data = history.map(r => r.soil_temp);
-
-    humChart.data.labels = labels;
-    humChart.data.datasets[0].data = history.map(r => r.air_hum);
-    humChart.data.datasets[1].data = history.map(r => r.soil_moist);
-
-    presChart.data.labels = labels;
-    presChart.data.datasets[0].data = history.map(r => r.pressure);
-    presChart.data.datasets[1].data = history.map(r => r.altitude);
-
-    gasChart.data.labels = labels;
-    gasChart.data.datasets[0].data = history.map(r => r.mq7_raw);
-    gasChart.data.datasets[1].data = history.map(r => r.mq135_raw);
-
-    [tempChart, humChart, presChart, gasChart].forEach(c => c.update('none'));
-}
-
-// ── Status panel ──────────────────────────────────────────────────────────────
-async function pollStatus() {
-    try {
-        const r    = await fetch('/api/status');
-        const data = await r.json();
-        const wEl  = document.getElementById('sys-wifi');
-        wEl.textContent = data.online ? 'Connected' : 'Offline';
-        wEl.style.color = data.online ? '#3fb950'   : '#f85149';
-
-        const wBadge = document.getElementById('wifi-badge');
-        wBadge.innerHTML = `<span class="dot"></span>${data.online ? 'Internet OK' : 'Offline'}`;
-        wBadge.className = data.online ? 'badge badge-green' : 'badge badge-red';
-
-        document.getElementById('sys-db').textContent  = (data.db_rows ?? '--') + ' rows';
-        document.getElementById('sys-api').textContent = data.api_key_set ? 'Configured' : 'No key set';
-        document.getElementById('sys-api').style.color = data.api_key_set ? '#3fb950' : '#8b949e';
-    } catch (_) {}
-}
-
-// ── Main poll ─────────────────────────────────────────────────────────────────
-async function poll() {
-    try {
-        const r    = await fetch('/api/data');
-        const data = await r.json();
-        updateCards(data.latest);
-        updateCharts(data.history);
-        const ts = data.latest?.timestamp ?? '';
-        document.getElementById('status').textContent =
-            ts ? `Last reading: ${ts.substring(11,19)}  ·  auto-refreshes every 15 s`
-               : 'No data yet — waiting for first DB write (logs every 60 s)';
-    } catch (e) {
-        document.getElementById('status').textContent = 'Connection error — retrying...';
-    }
-}
-
-poll();
-pollStatus();
-setInterval(poll,        15000);
-setInterval(pollStatus,  30000);
+pollSky();
+setInterval(pollSky, 120000);
 </script>
 </body>
 </html>

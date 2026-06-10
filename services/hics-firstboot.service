@@ -1,0 +1,18 @@
+[Unit]
+Description=HICS First Boot Setup (runs once, then disables itself)
+After=network-online.target
+Wants=network-online.target
+# Only runs if the completion marker does not exist
+ConditionPathExists=!/home/pawan/hics/.firstboot-complete
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/pawan/hics/scripts/firstboot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=600
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
