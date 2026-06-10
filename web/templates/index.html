@@ -3,180 +3,489 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>IESH Live Dashboard</title>
+    <title>HICS IESH Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; padding: 16px; }
-        h1 { font-size: 1.2rem; color: #58a6ff; margin-bottom: 4px; }
-        #status { font-size: 0.75rem; color: #8b949e; margin-bottom: 16px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; text-align: center; }
-        .card h3 { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        .val { font-size: 1.8rem; font-weight: 700; }
-        .unit { font-size: 0.8rem; color: #8b949e; }
-        .green  { color: #3fb950; }
-        .blue   { color: #58a6ff; }
-        .yellow { color: #d29922; }
-        .orange { color: #f0883e; }
-        .red    { color: #f85149; }
-        .chart-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-        .chart-wrap h3 { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        canvas { max-height: 200px; }
-        #upload-status { font-size: 0.75rem; color: #8b949e; text-align: right; margin-top: 8px; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:      #0d1117;
+            --surface: #161b22;
+            --border:  #30363d;
+            --text:    #e6edf3;
+            --muted:   #8b949e;
+            --green:   #3fb950;
+            --blue:    #58a6ff;
+            --yellow:  #d29922;
+            --orange:  #f0883e;
+            --red:     #f85149;
+            --purple:  #bc8cff;
+            --teal:    #39d353;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text);
+            padding: 12px; font-size: 14px; min-height: 100vh;
+        }
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+        .header-left h1 { font-size: 1.05rem; color: var(--blue); letter-spacing: 0.5px; }
+        .header-left h1 span { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+        .header-left p { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+        .header-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 12px; font-size: 0.68rem; font-weight: 600; }
+        .badge-green  { background: rgba(63,185,80,0.12);  color: var(--green);  border: 1px solid rgba(63,185,80,0.25); }
+        .badge-red    { background: rgba(248,81,73,0.12);  color: var(--red);    border: 1px solid rgba(248,81,73,0.25); }
+        .badge-blue   { background: rgba(88,166,255,0.12); color: var(--blue);   border: 1px solid rgba(88,166,255,0.25); }
+        .badge-muted  { background: rgba(139,148,158,0.1); color: var(--muted);  border: 1px solid rgba(139,148,158,0.2); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+        /* Section labels */
+        .section { margin-top: 18px; }
+        .section-label {
+            font-size: 0.62rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: 2px; padding-bottom: 6px; margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Metric cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; padding: 14px 12px; text-align: center;
+        }
+        .card-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .card-val   { font-size: 1.65rem; font-weight: 700; line-height: 1.1; }
+        .card-unit  { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
+        .card-sub   { font-size: 0.68rem; color: var(--muted); margin-top: 6px; font-style: italic; }
+
+        /* Gauge bar */
+        .gauge { margin-top: 10px; }
+        .gauge-track { background: var(--border); border-radius: 4px; overflow: hidden; }
+        .gauge-fill  { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+        .gauge-sm .gauge-track { height: 5px; }
+        .gauge-md .gauge-track { height: 8px; }
+
+        /* AQI / status badges */
+        .status-pill {
+            display: inline-block; margin-top: 8px;
+            padding: 2px 10px; border-radius: 10px; font-size: 0.68rem; font-weight: 600;
+        }
+
+        /* Charts */
+        .chart-section { margin-top: 10px; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+        .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+        .chart-wrap h3 {
+            font-size: 0.65rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 10px;
+        }
+        canvas { max-height: 170px; width: 100% !important; }
+
+        /* System panel */
+        .sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; }
+        .sys-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 12px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sys-icon { font-size: 1.1rem; line-height: 1; }
+        .sys-info .label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+        .sys-info .val   { font-size: 0.82rem; font-weight: 600; margin-top: 2px; }
+
+        /* Colors */
+        .c-green  { color: var(--green); }
+        .c-blue   { color: var(--blue); }
+        .c-yellow { color: var(--yellow); }
+        .c-orange { color: var(--orange); }
+        .c-red    { color: var(--red); }
+        .c-purple { color: var(--purple); }
+        .c-muted  { color: var(--muted); }
+
+        /* Responsive */
+        @media (max-width: 460px) {
+            .grid       { grid-template-columns: repeat(2, 1fr); }
+            .chart-grid { grid-template-columns: 1fr; }
+            .sys-grid   { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
-    <h1>IESH — Integrated Environmental Smart Hub</h1>
-    <div id="status">Connecting...</div>
 
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<div class="header">
+    <div class="header-left">
+        <h1>HICS IESH <span>— Integrated Environmental Smart Hub</span></h1>
+        <p id="status">Connecting to station...</p>
+    </div>
+    <div class="header-badges">
+        <span id="wifi-badge" class="badge badge-muted"><span class="dot"></span>...</span>
+        <span id="alt-badge"  class="badge badge-blue" title="Estimated from barometric pressure">...</span>
+    </div>
+</div>
+
+<!-- ── CLIMATE MODULE ─────────────────────────────────────────────────────── -->
+<div class="section">
+    <div class="section-label">Climate Module</div>
     <div class="grid">
         <div class="card">
-            <h3>Air Temp</h3>
-            <div class="val green" id="air_temp">--</div>
-            <div class="unit">°C</div>
+            <div class="card-label">Air Temperature</div>
+            <div class="card-val c-green" id="air_temp">--</div>
+            <div class="card-unit">°C</div>
         </div>
         <div class="card">
-            <h3>Humidity</h3>
-            <div class="val blue" id="air_hum">--</div>
-            <div class="unit">%</div>
+            <div class="card-label">Humidity</div>
+            <div class="card-val c-blue" id="air_hum">--</div>
+            <div class="card-unit">%</div>
+            <div class="gauge gauge-sm">
+                <div class="gauge-track"><div class="gauge-fill" id="hum-bar" style="background:var(--blue)"></div></div>
+            </div>
         </div>
         <div class="card">
-            <h3>Pressure</h3>
-            <div class="val blue" id="pressure">--</div>
-            <div class="unit">hPa</div>
+            <div class="card-label">Heat Index</div>
+            <div class="card-val c-orange" id="heat_index">--</div>
+            <div class="card-unit">°C</div>
+            <div class="card-sub" id="heat-feel">perceived temperature</div>
         </div>
         <div class="card">
-            <h3>Soil Temp</h3>
-            <div class="val yellow" id="soil_temp">--</div>
-            <div class="unit">°C</div>
+            <div class="card-label">Pressure</div>
+            <div class="card-val c-blue" id="pressure">--</div>
+            <div class="card-unit">hPa</div>
         </div>
         <div class="card">
-            <h3>Soil Moisture</h3>
-            <div class="val green" id="soil_moist">--</div>
-            <div class="unit">%</div>
-        </div>
-        <div class="card">
-            <h3>CO (MQ-7)</h3>
-            <div class="val orange" id="mq7">--</div>
-            <div class="unit">raw ADC</div>
-        </div>
-        <div class="card">
-            <h3>AQI (MQ-135)</h3>
-            <div class="val red" id="mq135">--</div>
-            <div class="unit">raw ADC</div>
+            <div class="card-label">Altitude (est.)</div>
+            <div class="card-val c-purple" id="altitude">--</div>
+            <div class="card-unit">m ASL</div>
+            <div class="card-sub">barometric formula</div>
         </div>
     </div>
+</div>
 
-    <div class="chart-wrap">
-        <h3>Temperature History</h3>
-        <canvas id="tempChart"></canvas>
+<!-- ── SOIL / AGRICULTURAL MODULE ────────────────────────────────────────── -->
+<div class="section">
+    <div class="section-label">Soil / Agricultural Module</div>
+    <div class="grid">
+        <div class="card">
+            <div class="card-label">Soil Temperature</div>
+            <div class="card-val c-yellow" id="soil_temp">--</div>
+            <div class="card-unit">°C</div>
+        </div>
+        <div class="card" style="grid-column: span 2">
+            <div class="card-label">Soil Moisture</div>
+            <div class="card-val c-green" id="soil_moist">--</div>
+            <div class="card-unit">%</div>
+            <div class="gauge gauge-md" style="margin-top:10px">
+                <div class="gauge-track"><div class="gauge-fill" id="soil-bar" style="background:var(--green)"></div></div>
+            </div>
+            <div class="card-sub" id="soil-label">--</div>
+        </div>
     </div>
-    <div class="chart-wrap">
-        <h3>Soil Moisture & Pressure History</h3>
-        <canvas id="soilChart"></canvas>
-    </div>
-    <div class="chart-wrap">
-        <h3>Gas Sensor History (raw ADC)</h3>
-        <canvas id="gasChart"></canvas>
-    </div>
+</div>
 
-    <div id="upload-status"></div>
+<!-- ── AIR QUALITY MODULE ─────────────────────────────────────────────────── -->
+<div class="section">
+    <div class="section-label">Air Quality Module</div>
+    <div class="grid">
+        <div class="card">
+            <div class="card-label">CO Level (MQ-7)</div>
+            <div class="card-val c-orange" id="mq7">--</div>
+            <div class="card-unit">raw ADC (0–4095)</div>
+            <div class="gauge gauge-sm" style="margin-top:8px">
+                <div class="gauge-track"><div class="gauge-fill" id="mq7-bar" style="background:var(--orange)"></div></div>
+            </div>
+            <span class="status-pill" id="co-badge">--</span>
+        </div>
+        <div class="card">
+            <div class="card-label">Air Quality (MQ-135)</div>
+            <div class="card-val c-red" id="mq135">--</div>
+            <div class="card-unit">raw ADC (0–4095)</div>
+            <div class="gauge gauge-sm" style="margin-top:8px">
+                <div class="gauge-track"><div class="gauge-fill" id="mq135-bar" style="background:var(--red)"></div></div>
+            </div>
+            <span class="status-pill" id="aqi-badge">--</span>
+        </div>
+    </div>
+</div>
 
-    <script>
-    const COLORS = {
-        air:   '#3fb950', soil: '#d29922', pressure: '#58a6ff',
-        hum:   '#79c0ff', mq7:  '#f0883e', mq135:    '#f85149'
+<!-- ── SENSOR HISTORY CHARTS ──────────────────────────────────────────────── -->
+<div class="section">
+    <div class="section-label">Sensor History</div>
+    <div class="chart-grid">
+        <div class="chart-wrap">
+            <h3>Temperature (°C)</h3>
+            <canvas id="tempChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+            <h3>Humidity &amp; Soil Moisture (%)</h3>
+            <canvas id="humChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+            <h3>Pressure (hPa) &amp; Altitude (m)</h3>
+            <canvas id="presChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+            <h3>Gas Sensors — raw ADC</h3>
+            <canvas id="gasChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ── SYSTEM STATUS ───────────────────────────────────────────────────────── -->
+<div class="section" style="margin-bottom:24px">
+    <div class="section-label">System Status</div>
+    <div class="sys-grid">
+        <div class="sys-card">
+            <div class="sys-icon">🕐</div>
+            <div class="sys-info">
+                <div class="label">Last Reading</div>
+                <div class="val" id="sys-time">--</div>
+            </div>
+        </div>
+        <div class="sys-card">
+            <div class="sys-icon">📡</div>
+            <div class="sys-info">
+                <div class="label">Internet</div>
+                <div class="val" id="sys-wifi">--</div>
+            </div>
+        </div>
+        <div class="sys-card">
+            <div class="sys-icon">🗄️</div>
+            <div class="sys-info">
+                <div class="label">DB Records</div>
+                <div class="val" id="sys-db">--</div>
+            </div>
+        </div>
+        <div class="sys-card">
+            <div class="sys-icon">☁️</div>
+            <div class="sys-info">
+                <div class="label">API Sync</div>
+                <div class="val" id="sys-api">--</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Palette
+const C = {
+    air:    '#3fb950',
+    soil_t: '#d29922',
+    soil_m: '#56d364',
+    hum:    '#79c0ff',
+    pres:   '#58a6ff',
+    alt:    '#bc8cff',
+    mq7:    '#f0883e',
+    mq135:  '#f85149',
+};
+
+const GRID_COLOR = '#21262d';
+const TICK = { color: '#8b949e', font: { size: 10 } };
+const LEGEND = { labels: { color: '#8b949e', boxWidth: 10, font: { size: 11 } } };
+
+function baseScale(title) {
+    return {
+        ticks: TICK,
+        grid: { color: GRID_COLOR },
+        title: title ? { display: true, text: title, color: '#8b949e', font: { size: 10 } } : undefined,
     };
+}
 
-    let charts = {};
-
-    function makeChart(id, datasets) {
-        const ctx = document.getElementById(id).getContext('2d');
-        charts[id] = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: datasets.map(d => ({
-                ...d, data: [], tension: 0.3, pointRadius: 2,
-                borderWidth: 1.5, fill: false
-            }))},
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#8b949e', boxWidth: 12 }}},
-                scales: {
-                    x: { ticks: { color: '#8b949e', maxTicksLimit: 10 }, grid: { color: '#21262d' }},
-                    y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' }}
-                }
-            }
-        });
-        return charts[id];
+function mkChart(id, datasets, yLabel, y2Label) {
+    const scales = {
+        x: { ...baseScale(), ticks: { ...TICK, maxTicksLimit: 8 } },
+        y: { ...baseScale(yLabel), position: 'left' },
+    };
+    if (y2Label) {
+        scales.y2 = { ...baseScale(y2Label), position: 'right', grid: { drawOnChartArea: false } };
     }
+    return new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: datasets.map(d => ({
+                label: d.label, borderColor: d.color, yAxisID: d.axis || 'y',
+                data: [], tension: 0.3, pointRadius: 1, borderWidth: 1.5, fill: false,
+            })),
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: LEGEND },
+            scales,
+        },
+    });
+}
 
-    makeChart('tempChart',  [
-        { label: 'Air Temp (°C)',  borderColor: COLORS.air },
-        { label: 'Soil Temp (°C)', borderColor: COLORS.soil },
-    ]);
-    makeChart('soilChart', [
-        { label: 'Soil Moisture (%)', borderColor: COLORS.soil },
-        { label: 'Humidity (%)',      borderColor: COLORS.hum, yAxisID: 'y' },
-    ]);
-    makeChart('gasChart',  [
-        { label: 'CO MQ-7 (raw)',   borderColor: COLORS.mq7 },
-        { label: 'AQI MQ-135 (raw)', borderColor: COLORS.mq135 },
-    ]);
+const tempChart = mkChart('tempChart', [
+    { label: 'Air Temp (°C)',  color: C.air },
+    { label: 'Soil Temp (°C)', color: C.soil_t },
+], '°C');
 
-    function fmt(v, dp=1) { return v != null ? Number(v).toFixed(dp) : '--'; }
+const humChart = mkChart('humChart', [
+    { label: 'Humidity (%)',       color: C.hum },
+    { label: 'Soil Moisture (%)',  color: C.soil_m },
+], '%');
 
-    function updateCards(latest) {
-        if (!latest) return;
-        document.getElementById('air_temp').textContent  = fmt(latest.air_temp);
-        document.getElementById('air_hum').textContent   = fmt(latest.air_hum);
-        document.getElementById('pressure').textContent  = fmt(latest.pressure);
-        document.getElementById('soil_temp').textContent = fmt(latest.soil_temp);
-        document.getElementById('soil_moist').textContent= fmt(latest.soil_moist);
-        document.getElementById('mq7').textContent       = latest.mq7_raw   ?? '--';
-        document.getElementById('mq135').textContent     = latest.mq135_raw ?? '--';
+const presChart = mkChart('presChart', [
+    { label: 'Pressure (hPa)', color: C.pres },
+    { label: 'Altitude (m)',   color: C.alt, axis: 'y2' },
+], 'hPa', 'm');
+
+const gasChart = mkChart('gasChart', [
+    { label: 'CO MQ-7',    color: C.mq7 },
+    { label: 'AQI MQ-135', color: C.mq135 },
+], 'raw ADC');
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(v, dp = 1) {
+    return (v != null && v !== '') ? Number(v).toFixed(dp) : '--';
+}
+
+function setBar(id, pct, color) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.width = Math.min(100, Math.max(0, pct || 0)) + '%';
+    if (color) el.style.background = color;
+}
+
+function setPill(id, text, color) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.style.background = color + '22';
+    el.style.color       = color;
+    el.style.border      = `1px solid ${color}55`;
+}
+
+function coLevel(raw) {
+    if (raw == null) return ['--', '#8b949e'];
+    if (raw < 300)  return ['Low',    '#3fb950'];
+    if (raw < 1000) return ['Medium', '#d29922'];
+    return                 ['High',   '#f85149'];
+}
+
+function aqiLevel(raw) {
+    if (raw == null) return ['--', '#8b949e'];
+    if (raw < 500)  return ['Good',      '#3fb950'];
+    if (raw < 1500) return ['Moderate',  '#d29922'];
+    if (raw < 3000) return ['Poor',      '#f0883e'];
+    return                 ['Hazardous', '#f85149'];
+}
+
+function soilLabel(pct) {
+    if (pct == null) return '--';
+    if (pct < 15) return 'Very Dry';
+    if (pct < 35) return 'Dry';
+    if (pct < 55) return 'Moderate';
+    if (pct < 75) return 'Moist';
+    return               'Saturated';
+}
+
+function heatFeeling(hi) {
+    if (hi == null) return 'n/a (below 20°C)';
+    if (hi < 27) return 'comfortable';
+    if (hi < 32) return 'caution';
+    if (hi < 39) return 'hot — limit exertion';
+    return              'danger — heat stress';
+}
+
+// ── Card update ───────────────────────────────────────────────────────────────
+function updateCards(latest) {
+    if (!latest) return;
+
+    document.getElementById('air_temp').textContent   = fmt(latest.air_temp);
+    document.getElementById('air_hum').textContent    = fmt(latest.air_hum, 0);
+    document.getElementById('pressure').textContent   = fmt(latest.pressure);
+    document.getElementById('soil_temp').textContent  = fmt(latest.soil_temp);
+    document.getElementById('soil_moist').textContent = fmt(latest.soil_moist, 0);
+    document.getElementById('mq7').textContent        = latest.mq7_raw   ?? '--';
+    document.getElementById('mq135').textContent      = latest.mq135_raw ?? '--';
+
+    const alt = latest.altitude;
+    document.getElementById('altitude').textContent = alt != null ? Math.round(alt) : '--';
+    document.getElementById('alt-badge').textContent = alt != null ? `${Math.round(alt)} m ASL` : 'Alt --';
+
+    const hi = latest.heat_index;
+    document.getElementById('heat_index').textContent = hi != null ? fmt(hi) : '--';
+    document.getElementById('heat-feel').textContent  = heatFeeling(hi);
+
+    setBar('hum-bar',  latest.air_hum);
+    setBar('soil-bar', latest.soil_moist);
+    document.getElementById('soil-label').textContent = soilLabel(latest.soil_moist);
+
+    const [coTxt, coColor] = coLevel(latest.mq7_raw);
+    setPill('co-badge', coTxt, coColor);
+    setBar('mq7-bar', (latest.mq7_raw ?? 0) / 40.95, coColor);
+
+    const [aqiTxt, aqiColor] = aqiLevel(latest.mq135_raw);
+    setPill('aqi-badge', aqiTxt, aqiColor);
+    setBar('mq135-bar', (latest.mq135_raw ?? 0) / 40.95, aqiColor);
+
+    const ts = latest.timestamp || '';
+    document.getElementById('sys-time').textContent = ts ? ts.substring(11, 19) : '--';
+}
+
+// ── Chart update ──────────────────────────────────────────────────────────────
+function updateCharts(history) {
+    const labels = history.map(r => r.timestamp ? r.timestamp.substring(11, 16) : '');
+
+    tempChart.data.labels = labels;
+    tempChart.data.datasets[0].data = history.map(r => r.air_temp);
+    tempChart.data.datasets[1].data = history.map(r => r.soil_temp);
+
+    humChart.data.labels = labels;
+    humChart.data.datasets[0].data = history.map(r => r.air_hum);
+    humChart.data.datasets[1].data = history.map(r => r.soil_moist);
+
+    presChart.data.labels = labels;
+    presChart.data.datasets[0].data = history.map(r => r.pressure);
+    presChart.data.datasets[1].data = history.map(r => r.altitude);
+
+    gasChart.data.labels = labels;
+    gasChart.data.datasets[0].data = history.map(r => r.mq7_raw);
+    gasChart.data.datasets[1].data = history.map(r => r.mq135_raw);
+
+    [tempChart, humChart, presChart, gasChart].forEach(c => c.update('none'));
+}
+
+// ── Status panel ──────────────────────────────────────────────────────────────
+async function pollStatus() {
+    try {
+        const r    = await fetch('/api/status');
+        const data = await r.json();
+        const wEl  = document.getElementById('sys-wifi');
+        wEl.textContent = data.online ? 'Connected' : 'Offline';
+        wEl.style.color = data.online ? '#3fb950'   : '#f85149';
+
+        const wBadge = document.getElementById('wifi-badge');
+        wBadge.innerHTML = `<span class="dot"></span>${data.online ? 'Internet OK' : 'Offline'}`;
+        wBadge.className = data.online ? 'badge badge-green' : 'badge badge-red';
+
+        document.getElementById('sys-db').textContent  = (data.db_rows ?? '--') + ' rows';
+        document.getElementById('sys-api').textContent = data.api_key_set ? 'Configured' : 'No key set';
+        document.getElementById('sys-api').style.color = data.api_key_set ? '#3fb950' : '#8b949e';
+    } catch (_) {}
+}
+
+// ── Main poll ─────────────────────────────────────────────────────────────────
+async function poll() {
+    try {
+        const r    = await fetch('/api/data');
+        const data = await r.json();
+        updateCards(data.latest);
+        updateCharts(data.history);
+        const ts = data.latest?.timestamp ?? '';
+        document.getElementById('status').textContent =
+            ts ? `Last reading: ${ts.substring(11,19)}  ·  auto-refreshes every 15 s`
+               : 'No data yet — waiting for first DB write (logs every 60 s)';
+    } catch (e) {
+        document.getElementById('status').textContent = 'Connection error — retrying...';
     }
+}
 
-    function updateCharts(history) {
-        const labels = history.map(r => {
-            const d = new Date(r.timestamp);
-            return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-        });
-
-        const c1 = charts['tempChart'];
-        c1.data.labels                = labels;
-        c1.data.datasets[0].data      = history.map(r => r.air_temp);
-        c1.data.datasets[1].data      = history.map(r => r.soil_temp);
-        c1.update('none');
-
-        const c2 = charts['soilChart'];
-        c2.data.labels                = labels;
-        c2.data.datasets[0].data      = history.map(r => r.soil_moist);
-        c2.data.datasets[1].data      = history.map(r => r.air_hum);
-        c2.update('none');
-
-        const c3 = charts['gasChart'];
-        c3.data.labels                = labels;
-        c3.data.datasets[0].data      = history.map(r => r.mq7_raw);
-        c3.data.datasets[1].data      = history.map(r => r.mq135_raw);
-        c3.update('none');
-    }
-
-    async function poll() {
-        try {
-            const res  = await fetch('/api/data');
-            const data = await res.json();
-            updateCards(data.latest);
-            updateCharts(data.history);
-            const ts = data.latest?.timestamp ?? 'no data yet';
-            document.getElementById('status').textContent = `Last reading: ${ts} — refreshes every 15s`;
-        } catch (e) {
-            document.getElementById('status').textContent = `Connection error: ${e}`;
-        }
-    }
-
-    poll();
-    setInterval(poll, 15000);
-    </script>
+poll();
+pollStatus();
+setInterval(poll,        15000);
+setInterval(pollStatus,  30000);
+</script>
 </body>
 </html>

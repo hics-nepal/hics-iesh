@@ -28,16 +28,13 @@ nmcli con modify IESH_Hotspot \
 nmcli con up IESH_Hotspot
 echo "  Hotspot SSID: $SSID  Password: $PASSWORD  IP: 10.42.0.1"
 
-# ── 2. If USB WiFi adapter is present, configure internet on wlan1 ───────────
+# ── 2. If USB WiFi adapter is present, connect it to internet ────────────────
 if ip link show $INTERNET_IFACE &>/dev/null; then
-    echo "[2/3] $INTERNET_IFACE found — configure internet connection:"
-    read -p "  WiFi SSID for internet: " INET_SSID
-    read -sp "  Password: " INET_PASS
-    echo
-    nmcli dev wifi connect "$INET_SSID" password "$INET_PASS" ifname $INTERNET_IFACE
-    echo "  Internet WiFi connected on $INTERNET_IFACE"
+    echo "[2/3] $INTERNET_IFACE found — connecting to internet WiFi..."
+    bash "$(dirname "$0")/connect_wifi.sh" || true
 else
-    echo "[2/3] $INTERNET_IFACE not found — plug in USB WiFi adapter, then re-run this script"
+    echo "[2/3] $INTERNET_IFACE not found — plug in USB WiFi adapter, then run:"
+    echo "      sudo bash scripts/connect_wifi.sh"
 fi
 
 # ── 3. Make sure HICS services start on boot ─────────────────────────────────

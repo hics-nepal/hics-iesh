@@ -1,21 +1,60 @@
 """HICS Terminal Dashboard — live sensor readout in the terminal."""
 import time
 import os
+import socket
 from datetime import datetime
 
 from sensors.dht22 import DHT22
 from sensors.bmp280_sensor import BMP280Sensor
 from sensors.ds18b20 import DS18B20
 from sensors.mcp3208 import MCP3208
-from sensors.config import CH_MQ7, CH_MQ135, SOIL_DRY, SOIL_WET
+from sensors.rtc import RTC
+from sensors.config import CH_MQ7, CH_MQ135, SEA_LEVEL_HPA
 
-dht   = DHT22()
-bmp   = BMP280Sensor()
-ds18  = DS18B20()
-adc   = MCP3208()
+W = 60
 
-last_air_t = "Wait..."
-last_air_h = "Wait..."
+
+def pressure_to_altitude(pressure_hpa):
+    return 44330.0 * (1.0 - (pressure_hpa / SEA_LEVEL_HPA) ** 0.1903)
+
+
+def heat_index_c(temp_c, humidity):
+    """Steadman heat index in °C. Returns None if temp < 20°C."""
+    if temp_c is None or humidity is None or temp_c < 20:
+        return None
+    T = temp_c * 9 / 5 + 32
+    H = humidity
+    HI = (-42.379 + 2.04901523 * T + 10.14333127 * H
+          - 0.22475541 * T * H - 0.00683783 * T ** 2
+          - 0.05481717 * H ** 2 + 0.00122874 * T ** 2 * H
+          + 0.00085282 * T * H ** 2 - 0.00000199 * T ** 2 * H ** 2)
+    return (HI - 32) * 5 / 9
+
+
+def wifi_ok():
+    try:
+        socket.setdefaulttimeout(1)
+        s = socket.socket()
+        s.connect(('8.8.8.8', 53))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
+def bar(frac, width=20):
+    n = int(max(0.0, min(1.0, frac)) * width)
+    return '#' * n + '.' * (width - n)
+
+
+dht  = DHT22()
+bmp  = BMP280Sensor()
+ds18 = DS18B20()
+adc  = MCP3208()
+rtc  = RTC()
+
+last_air_t = None
+last_air_h = None
 
 os.system('clear')
 
@@ -26,46 +65,59 @@ try:
         mq7_v     = adc.read_voltage(CH_MQ7)
         mq135_v   = adc.read_voltage(CH_MQ135)
         soil_pct  = adc.read_soil_pct()
-        soil_raw  = adc.read_raw(2)  # raw for display
+        soil_raw  = adc.read_raw(2)
 
         _, pressure = bmp.read()
+        altitude    = pressure_to_altitude(pressure) if pressure else None
         soil_temp   = ds18.read()
-        soil_temp_s = f"{soil_temp:.1f} C" if soil_temp is not None else ds18.error or "N/A"
 
-        t, h = dht.read()
-        if t is not None:
-            last_air_t = f"{t:.1f} C"
-            last_air_h = f"{h:.1f} %"
+        new_t, new_h = dht.read(retries=1, delay=0)
+        if new_t is not None:
+            last_air_t, last_air_h = new_t, new_h
+
+        hi       = heat_index_c(last_air_t, last_air_h)
+        rtc_dt   = rtc.read() if rtc.ok else None
+        ts       = (rtc_dt.strftime('%Y-%m-%d  %H:%M:%S') if rtc_dt
+                    else datetime.now().strftime('%Y-%m-%d  %H:%M:%S (sys)'))
+
+        t_s  = f"{last_air_t:.1f} C"   if last_air_t is not None else "Wait..."
+        h_s  = f"{last_air_h:.1f} %"   if last_air_h is not None else "Wait..."
+        hi_s = f"{hi:.1f} C"           if hi is not None          else "--"
+        p_s  = f"{pressure:.2f} hPa"   if pressure               else "--"
+        a_s  = f"{altitude:.0f} m ASL" if altitude is not None   else "--"
+        st_s = f"{soil_temp:.1f} C"    if soil_temp is not None  else "--"
 
         print("\033[H", end="")
-        print("=" * 57)
-        print(f" HICS DIAGNOSTIC              {datetime.now().strftime('%H:%M:%S')}")
-        print("=" * 57)
+        print("=" * W)
+        print(f"  HICS IESH                    {ts}")
+        print("=" * W)
 
-        print("\n[ SPI Analog (MCP3208) ]")
-        if adc.ok:
-            print(f"  MQ-7  CO    CH{CH_MQ7}  Raw: {mq7_raw:4d}  Voltage: {mq7_v:.3f} V")
-            print(f"  MQ-135 AQI  CH{CH_MQ135}  Raw: {mq135_raw:4d}  Voltage: {mq135_v:.3f} V")
-            print(f"  Soil Moist  CH2  Raw: {soil_raw:4d}  Est: {soil_pct:5.1f} %")
-        else:
-            print(f"  SPI ERROR: {adc.error}")
+        print("\n  [ CLIMATE ]")
+        print(f"  Air Temp   : {t_s:<12}  Heat Index : {hi_s}")
+        print(f"  Humidity   : {h_s}")
+        print(f"  Pressure   : {p_s:<12}  Altitude   : {a_s}")
 
-        print("\n[ Digital / I2C / 1-Wire ]")
-        print(f"  DHT22  Air Temp   GPIO 23  {last_air_t}")
-        print(f"  DHT22  Humidity   GPIO 23  {last_air_h}")
-        print(f"  DS18B20 Soil Temp GPIO  4  {soil_temp_s}")
-        if bmp.ok:
-            print(f"  BMP280 Pressure   I2C 0x76 {pressure:.1f} hPa")
-        else:
-            print(f"  BMP280 ERROR: {bmp.error}")
+        print("\n  [ SOIL MODULE ]")
+        print(f"  Soil Temp  : {st_s}")
+        print(f"  Soil Moist : {soil_pct:5.1f} %   [{bar(soil_pct / 100)}]")
 
-        print("\n" + "=" * 57)
-        print("Press Ctrl+C to exit.")
+        print("\n  [ AIR QUALITY ]")
+        print(f"  CO  (MQ-7)  ch{CH_MQ7}  {mq7_raw:4d} raw  {mq7_v:.3f} V  [{bar(mq7_raw/4095)}]")
+        print(f"  AQI (MQ-135)ch{CH_MQ135}  {mq135_raw:4d} raw  {mq135_v:.3f} V  [{bar(mq135_raw/4095)}]")
+
+        print("\n  [ SYSTEM ]")
+        clock_src = "RTC (DS3231)" if rtc_dt else "System clock"
+        net_s     = "Connected"   if wifi_ok() else "Offline"
+        print(f"  Clock src  : {clock_src}")
+        print(f"  Internet   : {net_s}")
+
+        print("\n" + "=" * W)
+        print("  Press Ctrl+C to exit.")
         print("\033[J", end="")
 
         time.sleep(2.0)
 
 except KeyboardInterrupt:
-    print("\n\nShutting down...")
+    print("\n\nShutdown.")
     dht.cleanup()
     adc.cleanup()

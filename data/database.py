@@ -52,3 +52,11 @@ def get_recent(n=100):
 def get_latest():
     rows = get_recent(1)
     return rows[0] if rows else None
+
+def count():
+    """Return total number of telemetry rows."""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            return conn.execute('SELECT COUNT(*) FROM telemetry').fetchone()[0]
+    except Exception:
+        return 0

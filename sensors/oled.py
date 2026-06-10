@@ -94,18 +94,34 @@ class OLED:
         if self.ok and self.device:
             self.device.clear()
 
-    def draw_sparkline(self, draw, title, data, y_min, y_max):
-        draw.text((0, 0), f"Graph: {title}", fill="white")
+    def draw_bar(self, draw, x, y, w, h, frac):
+        """Filled progress bar. frac in [0.0, 1.0]."""
+        frac = max(0.0, min(1.0, frac))
+        draw.rectangle((x, y, x + w - 1, y + h - 1), outline="white")
+        if frac > 0:
+            filled = max(1, int((w - 2) * frac))
+            draw.rectangle((x + 1, y + 1, x + filled, y + h - 2), fill="white")
+
+    def draw_sparkline(self, draw, title, data, y_min=None, y_max=None):
+        """Line chart with auto-scaling if y_min/y_max are not provided."""
+        draw.text((0, 0), title, fill="white")
         if len(data) < 2:
-            draw.text((0, 20), "Gathering data...", fill="white")
+            draw.text((0, 16), "Gathering...", fill="white")
             return
-        h = 50
-        y_off = 14
-        span = (y_max - y_min) if y_max != y_min else 1
-        n = len(data)
+        lo = y_min if y_min is not None else min(data)
+        hi = y_max if y_max is not None else max(data)
+        span = (hi - lo) if hi != lo else 1
+        chart_h = 44
+        y_off   = 14
+        w       = OLED_WIDTH
+        n       = len(data)
         for i in range(1, n):
-            x1 = int((i - 1) * OLED_WIDTH / (n - 1))
-            y1 = h + y_off - int(((data[i - 1] - y_min) / span) * h)
-            x2 = int(i * OLED_WIDTH / (n - 1))
-            y2 = h + y_off - int(((data[i] - y_min) / span) * h)
+            x1 = int((i - 1) * w / (n - 1))
+            y1 = chart_h + y_off - int(((data[i - 1] - lo) / span) * chart_h)
+            x2 = int(i * w / (n - 1))
+            y2 = chart_h + y_off - int(((data[i] - lo) / span) * chart_h)
             draw.line((x1, y1, x2, y2), fill="white")
+        lo_s = f"{lo:.0f}"
+        hi_s = f"{hi:.0f}"
+        draw.text((0, 56), lo_s, fill="white")
+        draw.text((w - len(hi_s) * 6, 56), hi_s, fill="white")
