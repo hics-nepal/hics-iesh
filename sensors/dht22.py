@@ -15,14 +15,22 @@ class DHT22:
         except Exception as e:
             self.error = str(e)
 
-    def read(self):
-        """Returns (temperature_C, humidity_pct) or (None, None) on failure."""
+    def read(self, retries=5, delay=2.5):
+        """Returns (temperature_C, humidity_pct) or (None, None) after retries.
+        DHT22 bit-banging on kernel 6.x has ~50% success rate per attempt."""
         if not self.ok:
             return None, None
-        try:
-            return self._sensor.temperature, self._sensor.humidity
-        except RuntimeError:
-            return None, None
+        import time
+        for _ in range(retries):
+            try:
+                t = self._sensor.temperature
+                h = self._sensor.humidity
+                if t is not None and h is not None:
+                    return t, h
+            except RuntimeError:
+                pass
+            time.sleep(delay)
+        return None, None
 
     def cleanup(self):
         if self.ok:

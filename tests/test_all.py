@@ -52,6 +52,7 @@ for label, script in TESTS:
 
     results.append((label, status, elapsed))
     print()
+    time.sleep(1)  # let I2C bus settle between tests
 
 print("=" * WIDTH)
 print(" SUMMARY")
