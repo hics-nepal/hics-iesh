@@ -189,7 +189,7 @@
         <div class="card">
             <div class="card-label">CO Level (MQ-7)</div>
             <div class="card-val c-orange" id="mq7">--</div>
-            <div class="card-unit">raw ADC (0–4095)</div>
+            <div class="card-unit">raw ADC · <span id="mq7-v">--</span> V sensor</div>
             <div class="gauge gauge-sm" style="margin-top:8px">
                 <div class="gauge-track"><div class="gauge-fill" id="mq7-bar" style="background:var(--orange)"></div></div>
             </div>
@@ -198,7 +198,7 @@
         <div class="card">
             <div class="card-label">Air Quality (MQ-135)</div>
             <div class="card-val c-red" id="mq135">--</div>
-            <div class="card-unit">raw ADC (0–4095)</div>
+            <div class="card-unit">raw ADC · <span id="mq135-v">--</span> V sensor</div>
             <div class="gauge gauge-sm" style="margin-top:8px">
                 <div class="gauge-track"><div class="gauge-fill" id="mq135-bar" style="background:var(--red)"></div></div>
             </div>
@@ -399,6 +399,8 @@ function updateCards(latest) {
     document.getElementById('soil_moist').textContent = fmt(latest.soil_moist, 0);
     document.getElementById('mq7').textContent        = latest.mq7_raw   ?? '--';
     document.getElementById('mq135').textContent      = latest.mq135_raw ?? '--';
+    document.getElementById('mq7-v').textContent      = latest.mq7_voltage   != null ? Number(latest.mq7_voltage).toFixed(2)   : '--';
+    document.getElementById('mq135-v').textContent    = latest.mq135_voltage != null ? Number(latest.mq135_voltage).toFixed(2) : '--';
 
     const alt = latest.altitude;
     document.getElementById('altitude').textContent = alt != null ? Math.round(alt) : '--';

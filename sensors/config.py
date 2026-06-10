@@ -19,6 +19,18 @@ CH_MQ7          = 0   # MQ-7  CO sensor
 CH_MQ135        = 1   # MQ-135 AQI sensor
 CH_SOIL         = 2   # Capacitive soil moisture
 
+# MQ Sensor Voltage Divider
+# Two 4.7kΩ resistors halve the MQ AOUT (0–5V) to 0–2.5V safe for VREF=3.3V.
+# MQ_DIVIDER_RATIO corrects ADC voltage back to the true sensor output voltage.
+# MQ_VCC is the sensor supply (heater + AOUT reference).
+MQ_DIVIDER_RATIO = 2.0   # (R1+R2)/R2 = (4.7+4.7)/4.7
+MQ_VCC           = 5.0   # V — sensor supply rail
+# MQ_RL: load resistor on the MQ module board (1kΩ on most blue modules).
+# Used to compute RS = MQ_RL * (MQ_VCC / sensor_voltage - 1).
+# Check your module datasheet or measure with multimeter between AOUT and GND
+# with sensor disconnected. Leave as None if unknown — RS won't be computed.
+MQ_RL_OHM        = 1000  # Ω — adjust if your module differs
+
 # OLED
 OLED_WIDTH  = 128
 OLED_HEIGHT = 64

@@ -42,12 +42,23 @@ def _online():
         return False
 
 
+def _mq_sensor_voltage(raw_adc):
+    """Correct raw ADC value back to true MQ sensor output voltage (0–5V).
+    The 2× voltage divider halves AOUT before the ADC, so we multiply back."""
+    from sensors.config import MQ_DIVIDER_RATIO
+    if raw_adc is None:
+        return None
+    return round((raw_adc / 4095) * 3.3 * MQ_DIVIDER_RATIO, 3)
+
+
 def _enrich(row):
     if not row:
         return row
     r = dict(row)
-    r['altitude']   = _pressure_to_altitude(r.get('pressure'))
-    r['heat_index'] = _heat_index_c(r.get('air_temp'), r.get('air_hum'))
+    r['altitude']    = _pressure_to_altitude(r.get('pressure'))
+    r['heat_index']  = _heat_index_c(r.get('air_temp'), r.get('air_hum'))
+    r['mq7_voltage'] = _mq_sensor_voltage(r.get('mq7_raw'))
+    r['mq135_voltage'] = _mq_sensor_voltage(r.get('mq135_raw'))
     return r
 
 

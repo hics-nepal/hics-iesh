@@ -101,9 +101,17 @@ try:
         print(f"  Soil Temp  : {st_s}")
         print(f"  Soil Moist : {soil_pct:5.1f} %   [{bar(soil_pct / 100)}]")
 
-        print("\n  [ AIR QUALITY ]")
-        print(f"  CO  (MQ-7)  ch{CH_MQ7}  {mq7_raw:4d} raw  {mq7_v:.3f} V  [{bar(mq7_raw/4095)}]")
-        print(f"  AQI (MQ-135)ch{CH_MQ135}  {mq135_raw:4d} raw  {mq135_v:.3f} V  [{bar(mq135_raw/4095)}]")
+        mq7_sv    = adc.read_sensor_voltage(CH_MQ7)
+        mq135_sv  = adc.read_sensor_voltage(CH_MQ135)
+        mq7_rs    = adc.read_mq_rs(CH_MQ7)
+        mq135_rs  = adc.read_mq_rs(CH_MQ135)
+        rs7_s   = f"{mq7_rs:.0f} Ω"   if mq7_rs   is not None else "--"
+        rs135_s = f"{mq135_rs:.0f} Ω" if mq135_rs is not None else "--"
+
+        print("\n  [ AIR QUALITY ]  (divider-corrected sensor voltage)")
+        print(f"  CO  (MQ-7)  ch{CH_MQ7}  {mq7_raw:4d} raw  {mq7_sv:.3f}V sensor  RS:{rs7_s:>8}  [{bar(mq7_raw/4095)}]")
+        print(f"  AQI (MQ-135)ch{CH_MQ135}  {mq135_raw:4d} raw  {mq135_sv:.3f}V sensor  RS:{rs135_s:>8}  [{bar(mq135_raw/4095)}]")
+        print(f"  Note: raw ADC is relative only. ppm needs RS/R0 calibration in clean air.")
 
         print("\n  [ SYSTEM ]")
         clock_src = "RTC (DS3231)" if rtc_dt else "System clock"
