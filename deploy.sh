@@ -1,10 +1,16 @@
 #!/bin/bash
 # Deploy HICS to Raspberry Pi.
 # Usage:
-#   ./deploy.sh              — sync all project files
-#   ./deploy.sh --restart    — sync + restart running services
-#   ./deploy.sh --install    — first-time: install systemd services + enable on boot
-#   ./deploy.sh --test       — sync + run full hardware test suite on RPI
+#   ./deploy.sh                      — sync all project files
+#   ./deploy.sh --file sensors/x.py  — sync one file, preserving its path
+#   ./deploy.sh --restart            — sync + restart running services
+#   ./deploy.sh --install            — first-time: install systemd services + enable on boot
+#   ./deploy.sh --test               — sync + run full hardware test suite on RPI
+#
+# IMPORTANT: always use this script (or rsync -avR) to sync files.
+# Never write bare rsync commands with a list of source files — rsync will
+# flatten them into the destination directory and silently put them in the
+# wrong place (e.g. sensors/config.py ends up as hics/config.py).
 
 set -e
 
@@ -16,6 +22,18 @@ RPI_DIR="/home/pawan"
 echo "=== HICS Deploy ==="
 echo "Target: $RPI"
 echo ""
+
+# Single-file sync — preserves directory structure via --relative
+if [ "$1" == "--file" ]; then
+    if [ -z "$2" ]; then
+        echo "Usage: ./deploy.sh --file path/relative/to/project/root.py"
+        exit 1
+    fi
+    echo "Syncing: $2"
+    rsync -avz --relative -e "ssh -i $KEY" "$2" "$RPI:$RPI_DIR/hics/"
+    echo "Done: $RPI:$RPI_DIR/hics/$2"
+    exit 0
+fi
 
 # Sync all project files (excluding git history and local-only files)
 rsync -avz --progress \
