@@ -37,8 +37,8 @@ OLED_HEIGHT = 64
 
 # Soil Moisture Calibration
 # Run scripts/calibrate_soil.py to update these values.
-SOIL_DRY = 4018   # raw ADC reading in dry air
-SOIL_WET = 2084   # raw ADC reading fully submerged
+SOIL_DRY = 4021   # raw ADC reading in dry air
+SOIL_WET = 1673   # raw ADC reading fully submerged in wet soil
 
 # Location & Altitude
 NODE_LOCATION = 'HICS Station, Nepal'
