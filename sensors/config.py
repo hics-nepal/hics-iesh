@@ -47,6 +47,9 @@ SEA_LEVEL_HPA = 1013.25   # reference sea-level pressure for altitude calc
 # Database
 DB_PATH = '/home/pawan/hics-data/hics.db'
 
+# MQ clean-air calibration (R0 baselines) — written by scripts/calibrate_mq.py
+MQ_CAL_PATH = '/home/pawan/hics-data/mq_cal.json'
+
 # Remote API
 API_URL     = 'https://himalayansciences.org/data/api/'
 API_KEY     = ''   # set this once you have a key from the site

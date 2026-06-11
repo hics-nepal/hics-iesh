@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sky Camera — HICS</title>
 <link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh}
@@ -91,6 +92,26 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf
   .cam-controls{gap:.5rem}
   .btn-stream,.btn-snapshot{font-size:.8rem;padding:.45rem .9rem}
 }
+
+/* ── Sky history section ── */
+.sky-history{margin-top:1.4rem}
+.sky-hist-hd{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#5060a0;margin-bottom:.9rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding-bottom:.55rem;border-bottom:1px solid #1e2235}
+.sky-range-bar{display:flex;gap:5px;flex-wrap:wrap}
+.sky-rbtn{background:#141728;border:1px solid #1e2235;border-radius:6px;padding:3px 10px;color:#5060a0;font-size:.7rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s}
+.sky-rbtn.active{background:rgba(88,166,255,.12);border-color:rgba(88,166,255,.3);color:#79c0ff}
+.sky-rbtn:hover:not(.active){border-color:#2a2f55;color:#8090b8}
+.sky-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.sky-chart-wrap{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:1rem}
+.sky-chart-wrap h4{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#4a5890;margin-bottom:.75rem}
+.sky-chart-wrap canvas{max-height:150px;width:100%!important}
+.sky-cond-timeline{background:#141728;border:1px solid #1e2235;border-radius:10px;padding:.85rem 1rem}
+.sky-cond-timeline h4{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#4a5890;margin-bottom:.65rem}
+.cond-dots{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.cond-dot{width:14px;height:14px;border-radius:50%;cursor:default;flex-shrink:0;transition:transform .1s}
+.cond-dot:hover{transform:scale(1.4)}
+.sky-no-data{text-align:center;color:#404870;padding:1.2rem;font-size:.8rem}
+.sky-hist-note{font-size:.68rem;color:#404870;margin-top:.6rem;text-align:right}
+@media(max-width:560px){.sky-chart-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -151,7 +172,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf
     </div>
     <div class="stat-cell">
       <div class="stat-cell-label">Auto-capture</div>
-      <div class="stat-cell-val" style="font-size:.82rem" id="stat-interval">every 2 min</div>
+      <div class="stat-cell-val" style="font-size:.82rem" id="stat-interval">every 15 min</div>
     </div>
   </div>
 
@@ -183,6 +204,35 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e8eaf
         <strong>Daytime:</strong> Blue sky has high B mean and low cloud cover. Clouds push R/G/B closer together. <strong>Night:</strong> all three channels drop near zero.
       </div>
     </div>
+  </div>
+
+  <!-- Sky History -->
+  <div class="sky-history">
+    <div class="sky-hist-hd">
+      <span>Sky Condition History</span>
+      <div class="sky-range-bar" role="group" aria-label="Sky history range">
+        <button class="sky-rbtn active" data-h="24"  onclick="setSkyRange(24)">24h</button>
+        <button class="sky-rbtn"        data-h="72"  onclick="setSkyRange(72)">3d</button>
+        <button class="sky-rbtn"        data-h="168" onclick="setSkyRange(168)">7d</button>
+        <button class="sky-rbtn"        data-h="720" onclick="setSkyRange(720)">30d</button>
+      </div>
+    </div>
+    <div class="sky-chart-grid">
+      <div class="sky-chart-wrap">
+        <h4>Brightness over time</h4>
+        <canvas id="skyBrightChart" aria-label="Sky brightness history" role="img"></canvas>
+      </div>
+      <div class="sky-chart-wrap">
+        <h4>Cloud cover % over time</h4>
+        <canvas id="skyCloudChart" aria-label="Cloud cover history" role="img"></canvas>
+      </div>
+    </div>
+    <div class="sky-cond-timeline">
+      <h4>Condition timeline — each dot = one capture</h4>
+      <div class="cond-dots" id="cond-dots" aria-label="Sky condition timeline"></div>
+      <div class="sky-no-data" id="sky-no-data" style="display:none">No sky history yet — data will appear after the first few captures (every 15 min)</div>
+    </div>
+    <div class="sky-hist-note" id="sky-hist-note"></div>
   </div>
 
 </div>
@@ -266,7 +316,7 @@ async function pollSky() {
   } catch(_) {}
 }
 
-// Poll sky analysis every 30s; refresh still image every 2min
+// Poll sky analysis every 30s; refresh still image every 15min
 pollSky();
 setInterval(pollSky, 30000);
 setInterval(function() {
@@ -274,7 +324,85 @@ setInterval(function() {
     const img = document.getElementById('cam-img');
     if (img) img.src = '/api/camera/latest.jpg?' + Date.now();
   }
-}, 120000);
+}, 900000);
+
+// ── Sky history charts ──────────────────────────────────────────────────────
+const GRID = '#1e2235';
+const TICK = {color:'#4a5890', font:{size:10}};
+const LEGEND = {labels:{color:'#6070a0', boxWidth:10, font:{size:11}}};
+function baseSc(title){return{ticks:TICK,grid:{color:GRID},title:title?{display:true,text:title,color:'#5060a0',font:{size:10}}:undefined};}
+
+const skyBrightChart = new Chart(document.getElementById('skyBrightChart').getContext('2d'), {
+  type:'line',
+  data:{labels:[],datasets:[{label:'Brightness',borderColor:'#d29922',backgroundColor:'rgba(210,153,34,.08)',data:[],tension:0.3,pointRadius:2,borderWidth:1.5,fill:true}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND},
+    scales:{x:{...baseSc(),ticks:{...TICK,maxTicksLimit:8}},y:{...baseSc('0–255'),min:0,max:255,position:'left'}}},
+});
+const skyCloudChart = new Chart(document.getElementById('skyCloudChart').getContext('2d'), {
+  type:'line',
+  data:{labels:[],datasets:[{label:'Cloud cover %',borderColor:'#79c0ff',backgroundColor:'rgba(121,192,255,.08)',data:[],tension:0.3,pointRadius:2,borderWidth:1.5,fill:true}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND},
+    scales:{x:{...baseSc(),ticks:{...TICK,maxTicksLimit:8}},y:{...baseSc('%'),min:0,max:100,position:'left'}}},
+});
+
+const COND_COLORS = {clear:'#3fb950', partly_cloudy:'#d29922', overcast:'#8090b8', night:'#bc8cff', unknown:'#2a2f55'};
+const COND_EMOJIS = {clear:'☀️', partly_cloudy:'⛅', overcast:'☁️', night:'🌙', unknown:'?'};
+
+let _skyRange = 24;
+
+function skyLabel(ts, hours) {
+  if (!ts) return '';
+  if (hours <= 24) return ts.substring(11,16);
+  if (hours <= 72) return ts.substring(5,16).replace('T',' ');
+  return ts.substring(5,10);
+}
+
+async function loadSkyHistory(hours) {
+  _skyRange = hours;
+  document.querySelectorAll('.sky-rbtn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.h) === hours));
+  try {
+    const rows = await fetch(`/api/camera/history?hours=${hours}`).then(r => r.json());
+    const noteEl = document.getElementById('sky-hist-note');
+    if (noteEl) noteEl.textContent = rows.length ? `${rows.length} captures in selected range` : '';
+
+    if (!rows.length) {
+      document.getElementById('sky-no-data').style.display = 'block';
+      document.getElementById('cond-dots').innerHTML = '';
+      skyBrightChart.data.labels = [];
+      skyBrightChart.data.datasets[0].data = [];
+      skyCloudChart.data.labels = [];
+      skyCloudChart.data.datasets[0].data = [];
+      skyBrightChart.update('none');
+      skyCloudChart.update('none');
+      return;
+    }
+    document.getElementById('sky-no-data').style.display = 'none';
+
+    const labels = rows.map(r => skyLabel(r.timestamp, hours));
+    skyBrightChart.data.labels = labels;
+    skyBrightChart.data.datasets[0].data = rows.map(r => r.brightness);
+    skyCloudChart.data.labels = labels;
+    skyCloudChart.data.datasets[0].data = rows.map(r => r.cloud_cover);
+    skyBrightChart.update('none');
+    skyCloudChart.update('none');
+
+    // Condition dot timeline
+    const dotsEl = document.getElementById('cond-dots');
+    dotsEl.innerHTML = rows.map(r => {
+      const cond = r.condition || 'unknown';
+      const color = COND_COLORS[cond] || COND_COLORS.unknown;
+      const emoji = COND_EMOJIS[cond] || '?';
+      const ts = r.timestamp ? r.timestamp.substring(0,16).replace('T',' ') : '';
+      return `<span class="cond-dot" style="background:${color}" title="${emoji} ${cond.replace('_',' ')} — ${ts}" aria-label="${cond} at ${ts}"></span>`;
+    }).join('');
+  } catch(e) {
+    console.error('Sky history error', e);
+  }
+}
+
+function setSkyRange(h) { loadSkyHistory(h); }
+
+loadSkyHistory(24);
 </script>
 </body>
 </html>

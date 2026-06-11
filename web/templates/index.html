@@ -162,6 +162,7 @@ canvas{max-height:170px;width:100%!important}
       <div class="card-label">Air Temperature</div>
       <div class="card-val c-green" id="air_temp" aria-label="Air temperature">--</div>
       <div class="card-unit">°C</div>
+      <div class="card-trend" id="trend-air_temp" aria-label="Change vs 1 hour ago"></div>
     </div>
     <div class="card" role="listitem">
       <div class="card-icon" aria-hidden="true">💧</div>
@@ -171,6 +172,7 @@ canvas{max-height:170px;width:100%!important}
       <div class="gauge gauge-sm" role="presentation">
         <div class="gauge-track"><div class="gauge-fill" id="hum-bar" style="background:var(--blue)"></div></div>
       </div>
+      <div class="card-trend" id="trend-air_hum" aria-label="Change vs 1 hour ago"></div>
     </div>
     <div class="card" role="listitem">
       <div class="card-icon" aria-hidden="true">🔥</div>
@@ -184,6 +186,7 @@ canvas{max-height:170px;width:100%!important}
       <div class="card-label">Pressure</div>
       <div class="card-val c-blue" id="pressure" aria-label="Barometric pressure">--</div>
       <div class="card-unit">hPa</div>
+      <div class="card-trend" id="trend-pressure" aria-label="Change vs 1 hour ago"></div>
     </div>
     <div class="card" role="listitem">
       <div class="card-icon" aria-hidden="true">⛰️</div>
@@ -204,6 +207,7 @@ canvas{max-height:170px;width:100%!important}
       <div class="card-label">Soil Temperature</div>
       <div class="card-val c-yellow" id="soil_temp" aria-label="Soil temperature">--</div>
       <div class="card-unit">°C</div>
+      <div class="card-trend" id="trend-soil_temp" aria-label="Change vs 1 hour ago"></div>
     </div>
     <div class="card card-wide" role="listitem">
       <div class="card-icon" aria-hidden="true">💦</div>
@@ -215,6 +219,7 @@ canvas{max-height:170px;width:100%!important}
       </div>
       <div class="gauge-labels"><span>Dry</span><span>Moderate</span><span>Saturated</span></div>
       <div class="card-sub" id="soil-desc">--</div>
+      <div class="card-trend" id="trend-soil_moist" aria-label="Change vs 1 hour ago"></div>
     </div>
   </div>
 </section>
@@ -227,7 +232,7 @@ canvas{max-height:170px;width:100%!important}
       <div class="card-icon" aria-hidden="true">🏭</div>
       <div class="card-label">CO Level (MQ-7)</div>
       <div class="card-val c-orange" id="mq7" aria-label="CO level raw ADC">--</div>
-      <div class="card-unit">raw ADC &nbsp;·&nbsp; <span id="mq7-v">--</span> V</div>
+      <div class="card-unit" id="mq7-unit">raw ADC &nbsp;·&nbsp; <span id="mq7-v">--</span> V</div>
       <div class="gauge gauge-sm" role="presentation">
         <div class="gauge-track"><div class="gauge-fill" id="mq7-bar" style="background:var(--orange)"></div></div>
       </div>
@@ -237,11 +242,21 @@ canvas{max-height:170px;width:100%!important}
       <div class="card-icon" aria-hidden="true">🌫️</div>
       <div class="card-label">Air Quality (MQ-135)</div>
       <div class="card-val c-red" id="mq135" aria-label="Air quality raw ADC">--</div>
-      <div class="card-unit">raw ADC &nbsp;·&nbsp; <span id="mq135-v">--</span> V</div>
+      <div class="card-unit" id="mq135-unit">raw ADC &nbsp;·&nbsp; <span id="mq135-v">--</span> V</div>
       <div class="gauge gauge-sm" role="presentation">
         <div class="gauge-track"><div class="gauge-fill" id="mq135-bar" style="background:var(--red)"></div></div>
       </div>
       <span class="status-pill" id="aqi-badge" role="status">--</span>
+    </div>
+    <div class="card" role="listitem">
+      <div class="card-icon" aria-hidden="true">🧮</div>
+      <div class="card-label">Proxy AQI (estimate)</div>
+      <div class="card-val" id="aqi-val" aria-label="Proxy air quality index">--</div>
+      <div class="card-unit" id="aqi-detail">needs calibration — run scripts/calibrate_mq.py</div>
+      <div class="gauge gauge-sm" role="presentation">
+        <div class="gauge-track"><div class="gauge-fill" id="aqi-bar"></div></div>
+      </div>
+      <span class="status-pill" id="aqi-cat" role="status">--</span>
     </div>
   </div>
 </section>
@@ -249,6 +264,12 @@ canvas{max-height:170px;width:100%!important}
 <!-- Charts -->
 <section class="section" aria-labelledby="history-label">
   <div class="section-label"><span class="section-icon" aria-hidden="true">📈</span><span id="history-label">Sensor History</span></div>
+  <div class="chart-range-bar" role="group" aria-label="Chart time range">
+    <button class="range-btn active" data-h="2"   onclick="setRange(2)">2h</button>
+    <button class="range-btn"        data-h="6"   onclick="setRange(6)">6h</button>
+    <button class="range-btn"        data-h="24"  onclick="setRange(24)">24h</button>
+    <button class="range-btn"        data-h="168" onclick="setRange(168)">7d</button>
+  </div>
   <div class="chart-grid">
     <div class="chart-wrap">
       <h3>Temperature (°C)</h3>
@@ -266,6 +287,9 @@ canvas{max-height:170px;width:100%!important}
       <h3>Gas Sensors — raw ADC</h3>
       <canvas id="gasChart" aria-label="Gas sensor history chart" role="img"></canvas>
     </div>
+  </div>
+  <div style="margin-top:10px;text-align:right">
+    <a href="/history" class="history-link-btn">Full sensor history &amp; analysis →</a>
   </div>
 </section>
 
@@ -388,6 +412,7 @@ function setBar(id,pct,color){const el=document.getElementById(id);if(!el)return
 function setPill(id,text,color){const el=document.getElementById(id);if(!el)return;el.textContent=text;el.style.background=color+'22';el.style.color=color;el.style.border=`1px solid ${color}55`}
 function coLevel(r){if(r==null)return['--','#8b949e'];if(r<300)return['Low','#3fb950'];if(r<1000)return['Medium','#d29922'];return['High','#f85149']}
 function aqiLevel(r){if(r==null)return['--','#8b949e'];if(r<500)return['Good','#3fb950'];if(r<1500)return['Moderate','#d29922'];if(r<3000)return['Poor','#f0883e'];return['Hazardous','#f85149']}
+function aqiColor500(a){if(a<=50)return'#3fb950';if(a<=100)return'#d29922';if(a<=150)return'#f0883e';if(a<=200)return'#f85149';if(a<=300)return'#bc8cff';return'#da3633'}
 function soilLabel(p){if(p==null)return'--';if(p<15)return'Very Dry';if(p<35)return'Dry';if(p<55)return'Moderate';if(p<75)return'Moist';return'Saturated'}
 function heatFeeling(h){if(h==null)return'n/a (below 20°C)';if(h<27)return'comfortable';if(h<32)return'caution';if(h<39)return'hot — limit exertion';return'danger — heat stress'}
 
@@ -417,11 +442,32 @@ function updateCards(latest){
   const[aqiTxt,aqiColor]=aqiLevel(latest.mq135_raw);
   setPill('aqi-badge',aqiTxt,aqiColor);
   setBar('mq135-bar',(latest.mq135_raw??0)/40.95,aqiColor);
+  /* Proxy AQI (server-computed from calibrated R0; needs calibrate_mq.py) */
+  if(latest.aqi!=null){
+    const c=aqiColor500(latest.aqi);
+    document.getElementById('aqi-val').textContent=latest.aqi;
+    document.getElementById('aqi-val').style.color=c;
+    document.getElementById('aqi-detail').innerHTML=
+      `CO ~${latest.co_ppm??'--'} ppm &nbsp;·&nbsp; CO₂eq ~${latest.co2eq_ppm??'--'} ppm`;
+    setPill('aqi-cat',latest.aqi_category,c);
+    setBar('aqi-bar',latest.aqi/3,c);
+    if(latest.co_ppm!=null)document.getElementById('mq7-unit').innerHTML=
+      `~${latest.co_ppm} ppm CO &nbsp;·&nbsp; ${Number(latest.mq7_voltage??0).toFixed(2)} V`;
+    if(latest.co2eq_ppm!=null)document.getElementById('mq135-unit').innerHTML=
+      `~${latest.co2eq_ppm} ppm CO₂eq &nbsp;·&nbsp; ${Number(latest.mq135_voltage??0).toFixed(2)} V`;
+  }
   const ts=latest.timestamp||'';
   document.getElementById('sys-time').textContent=ts?ts.substring(11,19):'--';
 }
-function updateCharts(history){
-  const labels=history.map(r=>r.timestamp?r.timestamp.substring(11,16):'');
+function chartLabel(ts, hours){
+  if(!ts) return '';
+  if(hours<=6)  return ts.substring(11,16);
+  if(hours<=24) return ts.substring(5,16).replace('T',' ');
+  return ts.substring(5,10);
+}
+function updateCharts(history, hours){
+  hours=hours||2;
+  const labels=history.map(r=>chartLabel(r.timestamp,hours));
   tempChart.data.labels=labels;
   tempChart.data.datasets[0].data=history.map(r=>r.air_temp);
   tempChart.data.datasets[1].data=history.map(r=>r.soil_temp);
@@ -436,6 +482,34 @@ function updateCharts(history){
   gasChart.data.datasets[1].data=history.map(r=>r.mq135_raw);
   [tempChart,humChart,presChart,gasChart].forEach(c=>c.update('none'));
 }
+
+let _activeHours=2;
+function setRange(h){
+  _activeHours=h;
+  document.querySelectorAll('.range-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.h)===h));
+  poll();
+}
+
+function renderTrend(id, delta){
+  const el=document.getElementById('trend-'+id);
+  if(!el) return;
+  if(delta==null){el.innerHTML='';return;}
+  const abs=Math.abs(delta).toFixed(1);
+  if(delta>0.2)       el.innerHTML=`<span class="trend-up">▲ +${abs}</span><span style="color:var(--muted);font-size:.68rem"> vs 1h ago</span>`;
+  else if(delta<-0.2) el.innerHTML=`<span class="trend-dn">▼ −${abs}</span><span style="color:var(--muted);font-size:.68rem"> vs 1h ago</span>`;
+  else                el.innerHTML=`<span class="trend-flat">→ stable</span>`;
+}
+async function pollTrends(){
+  try{
+    const d=await fetch('/api/trends').then(r=>r.json());
+    renderTrend('air_temp',   d.air_temp?.delta);
+    renderTrend('air_hum',    d.air_hum?.delta);
+    renderTrend('soil_temp',  d.soil_temp?.delta);
+    renderTrend('soil_moist', d.soil_moist?.delta);
+    renderTrend('pressure',   d.pressure?.delta);
+  }catch(_){}
+}
+
 async function pollStatus(){
   try{
     const r=await fetch('/api/status');
@@ -456,10 +530,11 @@ async function pollStatus(){
 }
 async function poll(){
   try{
-    const r=await fetch('/api/data');
+    const url=_activeHours>2?`/api/data?hours=${_activeHours}`:'/api/data';
+    const r=await fetch(url);
     const data=await r.json();
     updateCards(data.latest);
-    updateCharts(data.history);
+    updateCharts(data.history,_activeHours);
     const ts=data.latest?.timestamp??'';
     document.getElementById('status').textContent=ts
       ?`Last reading: ${ts.substring(11,19)}  ·  auto-refreshes every 15 s`
@@ -468,9 +543,10 @@ async function poll(){
     document.getElementById('status').textContent='Connection error — retrying…';
   }
 }
-poll(); pollStatus();
+poll(); pollStatus(); pollTrends();
 setInterval(poll,15000);
 setInterval(pollStatus,30000);
+setInterval(pollTrends,60000);
 
 // ── Sky camera ──────────────────────────────────────────────────────────────
 const SKY_ICONS = {clear:'☀️', partly_cloudy:'⛅', overcast:'☁️', night:'🌙', unknown:'❓'};

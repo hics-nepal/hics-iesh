@@ -35,13 +35,18 @@ if [ "$1" == "--file" ]; then
     exit 0
 fi
 
-# Sync all project files (excluding git history and local-only files)
-rsync -avz --progress \
+# Sync all project files (excluding git history and local-only files).
+# --delete removes files from ~/hics that were deleted locally, so stale
+# modules can't ghost on the Pi and shadow imports. Excluded patterns
+# (__pycache__, *.db, logs) are never deleted on the remote.
+rsync -avz --progress --delete \
     --exclude='.git' \
     --exclude='__pycache__' \
     --exclude='*.pyc' \
     --exclude='*.db' \
     --exclude='archive/' \
+    --exclude='*.log' \
+    --exclude='.firstboot*' \
     -e "ssh -i $KEY" \
     ./ "$RPI:$RPI_DIR/hics/"
 

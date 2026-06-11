@@ -9,7 +9,7 @@
 set -e
 
 SSID="IESH_Hub"
-PASSWORD="iesh2024"   # change this
+PASSWORD="***REMOVED***"
 HOTSPOT_IFACE="wlan0"
 INTERNET_IFACE="wlan1"
 

@@ -34,6 +34,8 @@ sudo bash flash.sh --wifi-ssid "YourNetwork" --wifi-password "YourPassword"
 
 Then insert the card into the RPi, connect power, and wait 5–10 minutes. Done.
 
+> **Hostname:** The RPi will be reachable at `iesh.local` on any network it joins.
+
 ---
 
 ## Flashing an SD Card
@@ -102,7 +104,7 @@ cat ~/hics-firstboot.log
 sudo systemctl status hics-core hics-web
 ```
 
-Open the dashboard in any browser: **`http://hics-iesh.local:5000/`**
+Open the dashboard in any browser: **`http://iesh.local:5000/`**
 
 ---
 
@@ -121,13 +123,28 @@ sudo bash ~/hics/setup.sh
 
 ## Accessing the Station
 
+### Via Hotspot (field use — no router needed)
+
+Connect any phone/tablet/laptop to the Pi's WiFi hotspot:
+
+| | |
+|---|---|
+| **WiFi name** | `IESH_Hub` |
+| **Password** | `***REMOVED***` |
+| **Dashboard** | **`http://iesh.local`** ← just type this |
+| **SSH** | `ssh pawan@iesh.local` |
+
+> Port 80 redirects automatically to Flask on 5000 — no port number needed.
+
+### Via existing network
+
 | URL | Description |
 |-----|-------------|
-| `http://<ip>:5000/` | Main dashboard — live sensor data |
-| `http://<ip>:5000/camera` | Sky camera — live stream + still |
-| `http://<ip>:5000/learn` | Learning portal — 5 modules, 25+ activities |
+| `http://iesh.local:5000/` | Main dashboard — mDNS (works on all interfaces) |
+| `http://iesh.local:5000/camera` | Sky camera — live stream + still |
+| `http://iesh.local:5000/learn` | Learning portal — 5 modules, 25+ activities |
 
-Default SSH: `ssh pawan@<ip>` or `ssh pawan@hics-iesh.local` — password: `***`
+Default SSH: `ssh pawan@iesh.local` or `ssh pawan@<rpi-ip>` — password: `***`
 
 ---
 
@@ -303,6 +320,13 @@ sqlite3 ~/hics-data/hics.db \
 ### WiFi (wlan1 internet adapter)
 ```bash
 sudo nmcli dev wifi connect 'SSID' password 'PASSWORD' ifname wlan1
+```
+
+### Hotspot not broadcasting
+```bash
+nmcli con up IESH_Hotspot        # bring up manually
+nmcli dev status                 # check wlan1 state
+systemctl status hics-redirect   # check port 80→5000 redirect
 ```
 
 ---

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HICS — Sensor History &amp; Analysis</title>
+<meta name="description" content="Full sensor history, trend analysis, and daily summaries from the HICS environmental monitoring station.">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117; --surface:#141728; --surface2:#1a1f35;
+  --border:#1e2235; --border2:#2a2f55;
+  --text:#e8eaf0; --muted:#8090b8;
+  --green:#3fb950; --blue:#58a6ff; --yellow:#d29922;
+  --orange:#f0883e; --red:#f85149; --purple:#bc8cff;
+  --accent-l:#79c0ff;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:.875rem;min-height:100vh}
+main{padding:14px 16px 40px}
+
+.page-header{margin-bottom:18px}
+.page-title{font-size:1.25rem;font-weight:700;letter-spacing:-.3px}
+.page-sub{font-size:.78rem;color:var(--muted);margin-top:4px}
+
+.section{margin-top:22px}
+.section-label{
+  display:flex;align-items:center;gap:8px;
+  font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;
+  padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--border);
+}
+.section-icon{font-size:1rem;line-height:1}
+
+/* ── Stats summary table ── */
+.stats-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.stats-tbl{width:100%;border-collapse:collapse;font-size:.78rem;min-width:560px}
+.stats-tbl thead th{
+  background:var(--surface2);color:var(--muted);font-size:.66rem;
+  text-transform:uppercase;letter-spacing:.8px;padding:8px 12px;
+  border-bottom:1px solid var(--border);text-align:right;white-space:nowrap
+}
+.stats-tbl thead th:first-child{text-align:left}
+.stats-tbl thead .group-hd{text-align:center;border-left:1px solid var(--border)}
+.stats-tbl thead .sub-hd{font-size:.63rem;letter-spacing:.5px;background:rgba(20,23,40,.6)}
+.stats-tbl tbody td{
+  padding:7px 12px;border-bottom:1px solid rgba(30,34,53,.7);
+  text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.stats-tbl tbody td:first-child{text-align:left;font-weight:600;border-left:3px solid transparent}
+.stats-tbl tbody tr:last-child td{border-bottom:none}
+.stats-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
+.td-min{color:var(--blue)}
+.td-avg{color:var(--muted)}
+.td-max{color:var(--orange)}
+.td-sep{border-left:1px solid var(--border)!important}
+
+/* ── History charts ── */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.chart-wrap h3{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+canvas{max-height:170px;width:100%!important}
+.mode-note{font-size:.68rem;color:var(--muted);margin-top:6px;text-align:right}
+
+/* ── Daily summary table ── */
+.htable-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.htable{width:100%;border-collapse:collapse;font-size:.75rem;min-width:700px}
+.htable thead th{
+  background:var(--surface2);color:var(--muted);font-size:.64rem;
+  text-transform:uppercase;letter-spacing:.7px;padding:7px 10px;
+  border-bottom:1px solid var(--border);text-align:right;white-space:nowrap
+}
+.htable thead th:first-child{text-align:left}
+.htable thead .group-hd{text-align:center;border-left:1px solid var(--border)}
+.htable thead .sub-row th{background:rgba(20,23,40,.6);font-size:.62rem;letter-spacing:.4px}
+.htable tbody td{
+  padding:6px 10px;border-bottom:1px solid rgba(30,34,53,.5);
+  text-align:right;font-variant-numeric:tabular-nums
+}
+.htable tbody td:first-child{text-align:left;font-weight:600;color:var(--text)}
+.htable tbody tr:last-child td{border-bottom:none}
+.htable tbody tr:hover td{background:rgba(255,255,255,.025)}
+.htable .td-min{color:var(--blue)}
+.htable .td-avg{color:var(--muted)}
+.htable .td-max{color:var(--orange)}
+.htable .td-sep{border-left:1px solid var(--border)!important}
+
+@media(max-width:520px){
+  main{padding:10px 10px 28px}
+  .chart-grid{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  main{padding:8px 8px 22px}
+  .section{margin-top:16px}
+}
+</style>
+</head>
+<body>
+{% include '_nav.html' %}
+
+<main id="main-content">
+
+<div class="page-header">
+  <div class="page-title">Sensor History &amp; Analysis</div>
+  <div class="page-sub" id="hist-meta">Loading…</div>
+</div>
+
+<!-- Section 1: Sensor Stats Summary -->
+<section class="section" aria-labelledby="stats-label">
+  <div class="section-label">
+    <span class="section-icon" aria-hidden="true">📊</span>
+    <span id="stats-label">Sensor Stats Summary</span>
+  </div>
+  <div class="stats-wrap">
+    <table class="stats-tbl" aria-label="Sensor statistics by time window">
+      <thead>
+        <tr>
+          <th rowspan="2">Sensor</th>
+          <th colspan="3" class="group-hd">Last 1 hour</th>
+          <th colspan="3" class="group-hd td-sep">Last 24 hours</th>
+          <th colspan="2" class="group-hd td-sep">All-time</th>
+        </tr>
+        <tr class="sub-hd">
+          <th>Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Max</th>
+        </tr>
+      </thead>
+      <tbody id="stats-tbody">
+        <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:14px">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Section 2: Historical Charts -->
+<section class="section" aria-labelledby="hcharts-label">
+  <div class="section-label">
+    <span class="section-icon" aria-hidden="true">📈</span>
+    <span id="hcharts-label">Historical Charts</span>
+  </div>
+  <div class="chart-range-bar" role="group" aria-label="History chart time range">
+    <button class="range-btn"        data-h="6"   onclick="setHRange(6)">6h</button>
+    <button class="range-btn"        data-h="24"  onclick="setHRange(24)">24h</button>
+    <button class="range-btn active" data-h="72"  onclick="setHRange(72)">3d</button>
+    <button class="range-btn"        data-h="168" onclick="setHRange(168)">7d</button>
+    <button class="range-btn"        data-h="720" onclick="setHRange(720)">30d</button>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-wrap">
+      <h3>Temperature (°C)</h3>
+      <canvas id="hTempChart" aria-label="Temperature history" role="img"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Humidity &amp; Soil Moisture (%)</h3>
+      <canvas id="hHumChart" aria-label="Humidity and moisture history" role="img"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Pressure (hPa)</h3>
+      <canvas id="hPresChart" aria-label="Pressure history" role="img"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Gas Sensors — raw ADC</h3>
+      <canvas id="hGasChart" aria-label="Gas sensor history" role="img"></canvas>
+    </div>
+  </div>
+  <div class="mode-note" id="hist-mode-note"></div>
+</section>
+
+<!-- Section 3: Daily Summary Table -->
+<section class="section" aria-labelledby="daily-label">
+  <div class="section-label">
+    <span class="section-icon" aria-hidden="true">📅</span>
+    <span id="daily-label">Daily Summary</span>
+    <span style="margin-left:auto;font-size:.68rem;text-transform:none;letter-spacing:0;color:var(--muted)">last 30 days</span>
+  </div>
+  <div class="htable-wrap">
+    <table class="htable" aria-label="Daily sensor summary">
+      <thead>
+        <tr>
+          <th rowspan="2">Date</th>
+          <th colspan="3" class="group-hd">Air Temp (°C)</th>
+          <th colspan="3" class="group-hd td-sep">Humidity (%)</th>
+          <th colspan="3" class="group-hd td-sep">Soil Temp (°C)</th>
+          <th colspan="3" class="group-hd td-sep">Soil Moisture (%)</th>
+          <th colspan="3" class="group-hd td-sep">Pressure (hPa)</th>
+          <th rowspan="2" style="text-align:right;color:var(--muted)">Rdgs</th>
+        </tr>
+        <tr class="sub-row">
+          <th>Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Avg</th><th>Max</th>
+          <th class="td-sep">Min</th><th>Avg</th><th>Max</th>
+        </tr>
+      </thead>
+      <tbody id="daily-tbody">
+        <tr><td colspan="17" style="text-align:center;color:var(--muted);padding:14px">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script>
+const C={air:'#3fb950',soil_t:'#d29922',soil_m:'#56d364',hum:'#79c0ff',pres:'#58a6ff',mq7:'#f0883e',mq135:'#f85149'};
+const GRID='#21262d';
+const TICK={color:'#8b949e',font:{size:10}};
+const LEGEND={labels:{color:'#8b949e',boxWidth:10,font:{size:11}}};
+function baseScale(title){return{ticks:TICK,grid:{color:GRID},title:title?{display:true,text:title,color:'#8b949e',font:{size:10}}:undefined};}
+function mkChart(id,datasets,yLabel){
+  return new Chart(document.getElementById(id).getContext('2d'),{
+    type:'line',
+    data:{labels:[],datasets:datasets.map(d=>({
+      label:d.label,borderColor:d.color,yAxisID:'y',
+      data:[],tension:0.3,pointRadius:0,borderWidth:1.5,fill:false,
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:LEGEND},
+      scales:{x:{...baseScale(),ticks:{...TICK,maxTicksLimit:10}},y:{...baseScale(yLabel),position:'left'}}},
+  });
+}
+
+const hTempChart=mkChart('hTempChart',[{label:'Air Temp (°C)',color:C.air},{label:'Soil Temp (°C)',color:C.soil_t}],'°C');
+const hHumChart=mkChart('hHumChart',[{label:'Humidity (%)',color:C.hum},{label:'Soil Moisture (%)',color:C.soil_m}],'%');
+const hPresChart=mkChart('hPresChart',[{label:'Pressure (hPa)',color:C.pres}],'hPa');
+const hGasChart=mkChart('hGasChart',[{label:'CO MQ-7',color:C.mq7},{label:'AQI MQ-135',color:C.mq135}],'raw ADC');
+
+function hLabel(ts, hours){
+  if(!ts) return '';
+  if(hours<=6)   return ts.substring(11,16);
+  if(hours<=24)  return ts.substring(5,16).replace('T',' ');
+  if(hours<=168) return ts.substring(5,10);
+  return ts.substring(0,10);
+}
+
+let _hRange=72;
+
+async function loadHistoryCharts(hours){
+  _hRange=hours;
+  document.querySelectorAll('.range-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.h)===hours));
+  try{
+    const d=await fetch(`/api/history?hours=${hours}`).then(r=>r.json());
+    const isRaw=d.mode==='raw';
+    const rows=d.data;
+    const labels=rows.map(r=>hLabel(isRaw?r.timestamp:r.hour,hours));
+    const g=(r,rk,ak)=>isRaw?r[rk]:r[ak];
+
+    hTempChart.data.labels=labels;
+    hTempChart.data.datasets[0].data=rows.map(r=>g(r,'air_temp','avg_air_temp'));
+    hTempChart.data.datasets[1].data=rows.map(r=>g(r,'soil_temp','avg_soil_temp'));
+    hHumChart.data.labels=labels;
+    hHumChart.data.datasets[0].data=rows.map(r=>g(r,'air_hum','avg_air_hum'));
+    hHumChart.data.datasets[1].data=rows.map(r=>g(r,'soil_moist','avg_soil_moist'));
+    hPresChart.data.labels=labels;
+    hPresChart.data.datasets[0].data=rows.map(r=>g(r,'pressure','avg_pressure'));
+    hGasChart.data.labels=labels;
+    hGasChart.data.datasets[0].data=rows.map(r=>g(r,'mq7_raw','avg_mq7'));
+    hGasChart.data.datasets[1].data=rows.map(r=>g(r,'mq135_raw','avg_mq135'));
+    [hTempChart,hHumChart,hPresChart,hGasChart].forEach(c=>c.update('none'));
+
+    const noteEl=document.getElementById('hist-mode-note');
+    if(noteEl) noteEl.textContent=isRaw?`${rows.length} raw readings`:`${rows.length} hourly averages`;
+  }catch(e){
+    console.error('History charts error',e);
+  }
+}
+
+function setHRange(h){loadHistoryCharts(h);}
+
+// ── Stats summary ──────────────────────────────────────────────────────────
+const SENSORS=[
+  {key:'air_temp',   label:'Air Temp',           unit:'°C',  color:C.air,    dp:1},
+  {key:'air_hum',    label:'Humidity',            unit:'%',   color:C.hum,    dp:0},
+  {key:'soil_temp',  label:'Soil Temp',           unit:'°C',  color:C.soil_t, dp:1},
+  {key:'soil_moist', label:'Soil Moisture',       unit:'%',   color:C.soil_m, dp:0},
+  {key:'pressure',   label:'Pressure',            unit:'hPa', color:C.pres,   dp:1},
+  {key:'mq7',        label:'CO (MQ-7)',           unit:'ADC', color:C.mq7,    dp:0},
+  {key:'mq135',      label:'Air Quality (MQ-135)',unit:'ADC', color:C.mq135,  dp:0},
+];
+
+async function loadStats(){
+  try{
+    const d=await fetch('/api/trends').then(r=>r.json());
+    const tbody=document.getElementById('stats-tbody');
+    const f=(v,dp)=>v!=null?Number(v).toFixed(dp??1):'—';
+
+    tbody.innerHTML=SENSORS.map(s=>{
+      const v=d[s.key]||{};
+      return `<tr>
+        <td style="border-left:3px solid ${s.color}!important">
+          ${s.label} <small style="color:var(--muted);font-weight:400">${s.unit}</small>
+        </td>
+        <td class="td-min">${f(v.h1_min,s.dp)}</td>
+        <td class="td-avg">${f(v.h1_avg,s.dp)}</td>
+        <td class="td-max">${f(v.h1_max,s.dp)}</td>
+        <td class="td-min td-sep">${f(v.h24_min,s.dp)}</td>
+        <td class="td-avg">${f(v.h24_avg,s.dp)}</td>
+        <td class="td-max">${f(v.h24_max,s.dp)}</td>
+        <td class="td-min td-sep">${f(v.all_min,s.dp)}</td>
+        <td class="td-max">${f(v.all_max,s.dp)}</td>
+      </tr>`;
+    }).join('');
+
+    const metaEl=document.getElementById('hist-meta');
+    if(metaEl){
+      const total=(d.total_rows||0).toLocaleString();
+      metaEl.textContent=`${total} total readings logged`;
+    }
+  }catch(e){
+    document.getElementById('stats-tbody').innerHTML=
+      '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:14px">Could not load stats</td></tr>';
+  }
+}
+
+// ── Daily summary table ────────────────────────────────────────────────────
+async function loadDaily(){
+  try{
+    const rows=await fetch('/api/daily?days=30').then(r=>r.json());
+    const tbody=document.getElementById('daily-tbody');
+    if(!rows.length){
+      tbody.innerHTML='<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:14px">No data yet</td></tr>';
+      return;
+    }
+    const f=(v,dp)=>v!=null?Number(v).toFixed(dp??1):'—';
+    tbody.innerHTML=rows.map(r=>`<tr>
+      <td>${r.date}</td>
+      <td class="td-min">${f(r.min_air_temp)}</td>
+      <td class="td-avg">${f(r.avg_air_temp)}</td>
+      <td class="td-max">${f(r.max_air_temp)}</td>
+      <td class="td-min td-sep">${f(r.min_air_hum,0)}</td>
+      <td class="td-avg">${f(r.avg_air_hum,0)}</td>
+      <td class="td-max">${f(r.max_air_hum,0)}</td>
+      <td class="td-min td-sep">${f(r.min_soil_temp)}</td>
+      <td class="td-avg">${f(r.avg_soil_temp)}</td>
+      <td class="td-max">${f(r.max_soil_temp)}</td>
+      <td class="td-min td-sep">${f(r.min_soil_moist,0)}</td>
+      <td class="td-avg">${f(r.avg_soil_moist,0)}</td>
+      <td class="td-max">${f(r.max_soil_moist,0)}</td>
+      <td class="td-min td-sep">${f(r.min_pressure)}</td>
+      <td class="td-avg">${f(r.avg_pressure)}</td>
+      <td class="td-max">${f(r.max_pressure)}</td>
+      <td style="color:var(--muted)">${r.readings}</td>
+    </tr>`).join('');
+  }catch(e){
+    document.getElementById('daily-tbody').innerHTML=
+      '<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:14px">Could not load daily data</td></tr>';
+  }
+}
+
+loadStats();
+loadHistoryCharts(72);
+loadDaily();
+</script>
+</body>
+</html>

@@ -7,7 +7,11 @@
     <a href="/"
        class="nav-link{% if request.path == '/' %} active{% endif %}"
        {% if request.path == '/' %}aria-current="page"{% endif %}
-       role="listitem">Dashboard</a>
+       role="listitem">📡 Dashboard</a>
+    <a href="/history"
+       class="nav-link{% if request.path == '/history' %} active{% endif %}"
+       {% if request.path == '/history' %}aria-current="page"{% endif %}
+       role="listitem">📈 History</a>
     <a href="/camera"
        class="nav-link{% if request.path == '/camera' %} active{% endif %}"
        {% if request.path == '/camera' %}aria-current="page"{% endif %}
@@ -15,7 +19,7 @@
     <a href="/learn"
        class="nav-link{% if request.path.startswith('/learn') %} active{% endif %}"
        {% if request.path.startswith('/learn') %}aria-current="page"{% endif %}
-       role="listitem">Learning Portal</a>
+       role="listitem">🎓 Learn</a>
   </div>
   <div class="nav-spacer"></div>
   <span class="nav-status" id="nav-status-pill" aria-live="polite" aria-label="Station status"></span>

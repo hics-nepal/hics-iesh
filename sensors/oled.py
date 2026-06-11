@@ -2,10 +2,21 @@ import smbus2
 from PIL import Image, ImageDraw
 from .config import I2C_BUS, OLED_ADDR, OLED_WIDTH, OLED_HEIGHT
 
+try:
+    import numpy as _np
+except ImportError:
+    _np = None
+
 
 class _OLEDDevice:
     """Direct SH1106 driver using write_i2c_block_data.
-    Luma's i2c_rdwr path fails on this display; raw 32-byte chunk writes work."""
+    Luma's i2c_rdwr path fails on this display; raw 32-byte chunk writes work.
+
+    Differential rendering: the last framebuffer sent is kept per page, and
+    only pages whose bytes changed are rewritten. The SH1106 scans the panel
+    continuously while we write, so a full 8-page rewrite shows as a visible
+    left-to-right sweep — diffing means steady-state updates (clock, countdown
+    bar) touch 1-2 pages and are imperceptible."""
 
     mode = '1'
     COL_OFFSET = 2  # SH1106 has 132-col driver, visible window starts at col 2
@@ -13,9 +24,11 @@ class _OLEDDevice:
     def __init__(self, port, address, width, height):
         self.size = (width, height)
         self._addr = address
+        self._port = port
         self._bus = smbus2.SMBus(port)
         self._pages = height // 8
         self._width = width
+        self._last_pages = None  # per-page byte lists from last successful write
         self._init()
 
     def _cmd(self, *cmds):
@@ -42,15 +55,65 @@ class _OLEDDevice:
         self._cmd(0xA6)                    # normal display
         self._cmd(0xAF)                    # display on
 
-    def display(self, image):
-        self._cmd(0xAE)  # display off during write (matches working raw sequence)
-        buf = list(image.convert('1').tobytes())
+    def _pack(self, image):
+        """PIL image → SH1106 page buffers (list of per-page byte lists).
+        SH1106 is page-addressed: each byte = 8 vertical pixels in a column,
+        LSB at the top. PIL tobytes() is row-major, so we must re-pack."""
+        img = image.convert('1')
+        w, h = img.size
+        if _np is not None:
+            a = (_np.asarray(img, dtype=_np.uint8) > 0).astype(_np.uint8)
+            a = a.reshape(self._pages, 8, w)
+            packed = _np.packbits(a, axis=1, bitorder='little')[:, 0, :]
+            return [packed[p].tolist() for p in range(self._pages)]
+        pixels = img.load()
+        pages = []
+        for page in range(self._pages):
+            buf = []
+            for x in range(w):
+                byte = 0
+                for bit in range(8):
+                    y = page * 8 + bit
+                    if y < h and pixels[x, y]:
+                        byte |= (1 << bit)
+                buf.append(byte)
+            pages.append(buf)
+        return pages
+
+    def _render(self, image):
+        """Write only the pages that differ from the last successful write."""
+        pages = self._pack(image)
         lo = 0x00 + (self.COL_OFFSET & 0x0F)
         hi = 0x10 + (self.COL_OFFSET >> 4)
-        for page in range(self._pages):
-            self._cmd(0xB0 | page, lo, hi)
-            self._data(buf[page * self._width:(page + 1) * self._width])
-        self._cmd(0xAF)  # display on
+        if self._last_pages is None:
+            self._last_pages = [None] * self._pages
+        for p, buf in enumerate(pages):
+            if self._last_pages[p] == buf:
+                continue
+            self._cmd(0xB0 | p, lo, hi)
+            self._data(buf)
+            self._last_pages[p] = buf
+
+    def display(self, image):
+        try:
+            self._render(image)
+        except OSError:
+            # Bus stuck: close and reopen. Soft retry avoids display-off/on flash.
+            import time as _t
+            try:
+                self._bus.close()
+            except Exception:
+                pass
+            _t.sleep(0.05)
+            self._bus = smbus2.SMBus(self._port)
+            self._last_pages = None  # panel RAM state unknown — force full write
+            try:
+                self._render(image)
+            except OSError:
+                # Soft retry failed — full reinit needed (display will briefly blank).
+                self._init()
+                self._last_pages = None
+                self._render(image)
 
     def clear(self):
         self.display(Image.new('1', self.size))
@@ -72,7 +135,10 @@ class _Canvas:
 
     def __exit__(self, exc_type, *_):
         if exc_type is None:
-            self._device.display(self._image)
+            try:
+                self._device.display(self._image)
+            except OSError:
+                pass  # transient I2C error — skip frame, next loop will retry
 
 
 class OLED:
@@ -111,7 +177,7 @@ class OLED:
         lo = y_min if y_min is not None else min(data)
         hi = y_max if y_max is not None else max(data)
         span = (hi - lo) if hi != lo else 1
-        chart_h = 44
+        chart_h = 36
         y_off   = 14
         w       = OLED_WIDTH
         n       = len(data)
@@ -123,5 +189,5 @@ class OLED:
             draw.line((x1, y1, x2, y2), fill="white")
         lo_s = f"{lo:.0f}"
         hi_s = f"{hi:.0f}"
-        draw.text((0, 56), lo_s, fill="white")
-        draw.text((w - len(hi_s) * 6, 56), hi_s, fill="white")
+        draw.text((0, 52), lo_s, fill="white")
+        draw.text((w - len(hi_s) * 6, 52), hi_s, fill="white")
