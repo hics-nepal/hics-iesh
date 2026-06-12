@@ -15,7 +15,9 @@
 #   --wifi-ssid SSID     WiFi network name
 #   --wifi-password PW   WiFi password
 #   --hostname NAME      RPi hostname              (default: hics-iesh)
-#   --password PW        RPi pawan user password   (default: hics)
+#   --password PW        RPi pawan user password   (default: random, printed at end)
+#   --station-id ID      Station ID for cloud sync (e.g. KTM-001) — written to sensors/config.py
+#   --api-key KEY        Station API key from himalayansciences.org — written to sensors/config.py
 #   --skip-code          Only flash + configure OS, skip copying HICS code
 #
 # Example:
@@ -41,6 +43,8 @@ WIFI_SSID=""
 WIFI_PASSWORD=""
 HOSTNAME_VAL="hics-iesh"
 USER_PASSWORD=""
+STATION_ID=""
+STATION_API_KEY=""
 SKIP_CODE=false
 MNT_BOOT="/tmp/hics-mnt-boot"
 MNT_ROOT="/tmp/hics-mnt-root"
@@ -54,6 +58,8 @@ while [[ $# -gt 0 ]]; do
     --wifi-password) WIFI_PASSWORD="$2";  shift 2 ;;
     --hostname)      HOSTNAME_VAL="$2";   shift 2 ;;
     --password)      USER_PASSWORD="$2";  shift 2 ;;
+    --station-id)    STATION_ID="$2";     shift 2 ;;
+    --api-key)       STATION_API_KEY="$2"; shift 2 ;;
     --skip-code)     SKIP_CODE=true;      shift   ;;
     --help|-h)
       grep '^#' "$0" | grep -v '#!/' | sed 's/^# \?//' | head -25
@@ -93,6 +99,13 @@ if [[ -n "$WIFI_SSID" && -z "$WIFI_PASSWORD" ]]; then
   read -rs WIFI_PASSWORD; echo
 fi
 
+# ── Per-device user password (never ship a shared default) ───────────────────
+PASSWORD_GENERATED=false
+if [[ -z "$USER_PASSWORD" ]]; then
+  USER_PASSWORD="$(tr -dc 'a-z0-9' < /dev/urandom | head -c 12)"
+  PASSWORD_GENERATED=true
+fi
+
 # ── Banner ────────────────────────────────────────────────────────────────────
 echo
 echo -e "${BOLD}╔══════════════════════════════════════════╗"
@@ -101,8 +114,9 @@ echo -e "╚══════════════════════�
 info "Image:     $(basename "$IMAGE_PATH")  ($(du -sh "$IMAGE_PATH" | cut -f1) compressed)"
 info "Device:    $DEVICE"
 info "Hostname:  $HOSTNAME_VAL"
-info "User:      pawan / $USER_PASSWORD"
+info "User:      pawan / $USER_PASSWORD$( $PASSWORD_GENERATED && echo ' (generated — note it down)')"
 info "WiFi:      ${WIFI_SSID:-'(not configured)'}"
+info "Station:   ${STATION_ID:-'(no cloud sync configured)'}"
 info "Copy code: $( $SKIP_CODE && echo 'no (--skip-code)' || echo 'yes')"
 
 # ── Safety: refuse internal/NVMe drives ──────────────────────────────────────
@@ -249,6 +263,18 @@ if ! $SKIP_CODE; then
   sed -i "s|DB_PATH = '.*'|DB_PATH = '/home/pawan/hics-data/hics.db'|" \
     "${DEST}/sensors/config.py" 2>/dev/null || true
 
+  # Provision station identity for cloud sync (fleet: one flash = one configured device)
+  if [[ -n "$STATION_ID" ]]; then
+    sed -i "s|API_NODE_ID = '.*'|API_NODE_ID = '${STATION_ID}'|" \
+      "${DEST}/sensors/config.py" 2>/dev/null || true
+    ok "Station ID: $STATION_ID"
+  fi
+  if [[ -n "$STATION_API_KEY" ]]; then
+    sed -i "s|API_KEY     = '.*'|API_KEY     = '${STATION_API_KEY}'|" \
+      "${DEST}/sensors/config.py" 2>/dev/null || true
+    ok "Station API key written to sensors/config.py"
+  fi
+
   # Set ownership (uid/gid 1000 = first user on RPi OS)
   chown -R 1000:1000 "${MNT_ROOT}/home/pawan/"
 
@@ -290,7 +316,7 @@ echo -e "  ${BOLD}Next steps:${NC}"
 echo -e "  1. Remove SD card, insert into Raspberry Pi, connect power"
 echo -e "  2. First boot auto-configures everything — takes ${YELLOW}5–10 min${NC}"
 echo -e "  3. Find the RPi:    ${CYAN}ping ${HOSTNAME_VAL}.local${NC}  or check your router"
-echo -e "  4. SSH in:          ${CYAN}ssh pawan@${HOSTNAME_VAL}.local${NC}  (password: ${USER_PASSWORD})"
+echo -e "  4. SSH in:          ${CYAN}ssh pawan@${HOSTNAME_VAL}.local${NC}  (password: ${USER_PASSWORD}$( $PASSWORD_GENERATED && echo ' — generated, note it down'))"
 echo -e "  5. Dashboard:       ${CYAN}http://${HOSTNAME_VAL}.local:5000/${NC}"
 echo
 echo -e "  First-boot log:     ${CYAN}cat ~/hics-firstboot.log${NC}"

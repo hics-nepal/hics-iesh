@@ -4,8 +4,15 @@
 # Usage: sudo bash scripts/connect_wifi.sh [SSID] [PASSWORD]
 
 IFACE="wlan1"
-SSID="${1:-***REMOVED***}"
-PASS="${2:-***REMOVED***}"
+SSID="${1:-}"
+PASS="${2:-}"
+
+if [ -z "$SSID" ]; then
+    read -rp "WiFi SSID: " SSID
+fi
+if [ -z "$PASS" ]; then
+    read -rsp "WiFi password for '$SSID': " PASS; echo
+fi
 
 if ! ip link show "$IFACE" &>/dev/null; then
     echo "ERROR: $IFACE not found."

@@ -4,14 +4,32 @@
 #   wlan1 (USB WiFi dongle) → connects to internet / uploads to API
 #
 # Run once as root. After reboot both connections come up automatically.
-# Usage: sudo bash scripts/setup_hotspot.sh
+# Usage: sudo bash scripts/setup_hotspot.sh [HOTSPOT_PASSWORD]
+#
+# If no password is given, a random per-device one is generated, printed once,
+# and saved to /home/pawan/hics-data/hotspot_password.txt (root-readable file
+# on the device itself — write it on the station's label).
 
 set -e
 
 SSID="IESH_Hub"
-PASSWORD="***REMOVED***"
+PASSWORD="${1:-}"
 HOTSPOT_IFACE="wlan0"
 INTERNET_IFACE="wlan1"
+
+PASS_FILE="/home/pawan/hics-data/hotspot_password.txt"
+if [ -z "$PASSWORD" ]; then
+    if [ -f "$PASS_FILE" ]; then
+        PASSWORD="$(cat "$PASS_FILE")"
+        echo "Reusing existing hotspot password from $PASS_FILE"
+    else
+        PASSWORD="$(tr -dc 'a-z0-9' < /dev/urandom | head -c 10)"
+        echo "Generated random hotspot password (no argument given)."
+    fi
+fi
+mkdir -p "$(dirname "$PASS_FILE")"
+printf '%s\n' "$PASSWORD" > "$PASS_FILE"
+chmod 600 "$PASS_FILE"
 
 echo "=== HICS Network Setup ==="
 
@@ -48,6 +66,6 @@ sudo systemctl restart hics-core hics-web
 
 echo ""
 echo "=== Done ==="
+echo "  Hotspot:   $SSID  password: $PASSWORD  (also saved to $PASS_FILE)"
 echo "  Dashboard: http://10.42.0.1:5000  (connect phone to '$SSID')"
 echo "  SSH admin: ssh pawan@10.42.0.1"
-echo "  Or via ethernet: ssh pawan@<rpi-ip>"

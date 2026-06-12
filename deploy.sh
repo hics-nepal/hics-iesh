@@ -14,8 +14,10 @@
 
 set -e
 
-RPI="pawan@<rpi-ip>"
-KEY="$HOME/.ssh/hics_rpi"
+# Target Pi: defaults to mDNS hostname; override per-device with
+#   IESH_RPI=pawan@<host-or-ip> ./deploy.sh
+RPI="${IESH_RPI:-pawan@iesh.local}"
+KEY="${IESH_SSH_KEY:-$HOME/.ssh/hics_rpi}"
 SSH="ssh -i $KEY"
 RPI_DIR="/home/pawan"
 
