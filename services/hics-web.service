@@ -1,6 +1,6 @@
 [Unit]
 Description=HICS Web Dashboard (Flask, port 5000)
-After=multi-user.target hics-core.service
+After=network.target hics-core.service
 
 [Service]
 Type=simple

@@ -1,6 +1,6 @@
 [Unit]
 Description=HICS Core Dashboard (OLED + Sensor Loop + DB logging)
-After=multi-user.target
+After=network.target
 
 [Service]
 Type=simple
