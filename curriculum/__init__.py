@@ -1,5 +1,9 @@
 from .modules.activities import MODULES
 
+# Bump on any content change; the exported curriculum.json and every
+# downstream surface (device portal, website /learn, PDFs) carry this.
+CURRICULUM_VERSION = '0.1.0'
+
 def get_module(module_id):
     return MODULES.get(module_id)
 
