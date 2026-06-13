@@ -70,7 +70,7 @@ sudo bash flash.sh \
   --wifi-ssid "MyNetwork" \
   --wifi-password "MyPassword" \
   --hostname "hics-iesh" \
-  --station-id "KTM-001" \
+  --station-id "IESH-KMC-001" \
   --api-key "<key issued by himalayansciences.org>"
 
 # Only flash OS without copying HICS code
@@ -85,7 +85,7 @@ sudo bash flash.sh --skip-code
 | `--wifi-password` | (prompted) | WiFi password |
 | `--hostname` | `hics-iesh` | RPi hostname |
 | `--password` | random, printed at end | `pawan` user password — per-device, never shared |
-| `--station-id` | (none) | Station ID for cloud sync, e.g. `KTM-001` |
+| `--station-id` | (none) | Station ID for cloud sync, e.g. `IESH-KMC-001` |
 | `--api-key` | (none) | Station API key from himalayansciences.org |
 | `--skip-code` | false | Skip copying HICS code |
 
@@ -190,18 +190,31 @@ This image can be flashed to any card with `flash.sh --image hics-custom.img.xz 
 
 ## Development Workflow
 
-Changes made on your development machine are synced to the running RPi:
+Two update paths exist depending on where you are in the cycle:
+
+| Situation | Command |
+|---|---|
+| Iterating on hardware code, Pi on desk | `./deploy.sh --restart` |
+| Pushed a fix to GitHub, Pi anywhere | `./deploy.sh --pull` |
+| Setting up a brand-new Pi | `git clone`, then set API key in `sensors/config.py` |
 
 ```bash
-# Sync code changes
-./deploy.sh
+# Sync local changes to the Pi + restart services
+./deploy.sh --restart
 
-# Sync + restart Flask
-./deploy.sh   # then manually restart:
-ssh pawan@iesh.local "kill \$(pgrep -f web/app.py); cd ~/hics && nohup python3 web/app.py >> /tmp/web.log 2>&1 &"
+# Pull latest committed code from GitHub on the Pi + restart
+./deploy.sh --pull
+
+# Sync a single file without touching anything else
+./deploy.sh --file sensors/dht22.py
 ```
 
-The `deploy.sh` script uses `rsync --relative` — never use bare `rsync` with multiple sources as it silently flattens paths.
+> `sensors/config.py` is **never** overwritten by `deploy.sh` — it holds the
+> per-device API key and is managed directly on the device.
+> See `sensors/config.py` comments for details.
+
+The `deploy.sh` script uses `rsync --relative` — never write bare `rsync` with
+a list of source files; it silently flattens paths into the destination directory.
 
 ### Service management on RPi
 
@@ -226,14 +239,16 @@ ssh pawan@iesh.local "sudo python3 ~/hics/tests/test_all.py"
 hics-iesh-v0.1/
 ├── flash.sh                   ← Flash SD card (run on dev machine)
 ├── setup.sh                   ← Install/repair on running RPi (run on RPi)
-├── deploy.sh                  ← Sync code from dev machine to RPi
+├── deploy.sh                  ← Sync code from dev machine to RPi (see Development Workflow)
 ├── requirements.txt           ← Python dependencies
 │
 ├── core_dash.py               ← OLED display + sensor loop + DB logger
 ├── terminal_dash.py           ← Terminal monitoring dashboard
 │
 ├── sensors/
-│   ├── config.py              ← All hardware config (single source of truth)
+│   ├── config.py              ← All hardware config (single source of truth).
+│                                 API_KEY is set per-device after cloning — never committed.
+│                                 Git tracks this file with --assume-unchanged on the Pi.
 │   ├── camera.py              ← Sky camera: capture, analysis, MJPEG stream
 │   ├── bmp280_sensor.py       ← Pressure / temperature
 │   ├── dht22.py               ← Air temp / humidity
@@ -243,8 +258,9 @@ hics-iesh-v0.1/
 │   └── rtc.py                 ← DS3231 real-time clock
 │
 ├── data/
-│   ├── database.py            ← SQLite read/write interface
-│   └── uploader.py            ← Remote API uploader
+│   ├── database.py            ← SQLite read/write interface; tracks synced flag per row
+│   └── uploader.py            ← Batch uploader — drains unsynced rows to himalayansciences.org;
+│                                 accumulates offline, backfills on reconnect
 │
 ├── web/
 │   ├── app.py                 ← Flask app (port 5000)
@@ -272,6 +288,42 @@ hics-iesh-v0.1/
     ├── test_all.py            ← Master test runner
     ├── test_camera.py         ← Camera capture + sky analysis
     └── test_*.py              ← Per-sensor tests
+```
+
+---
+
+## Cloud Sync
+
+Every 5 minutes `hics-core` calls `upload_unsynced()`, which:
+
+1. Reads all rows from the local SQLite DB that have not yet been synced
+2. POSTs them in batches of up to 500 to `https://himalayansciences.org/api/v1/ingest/environmental/`
+3. Marks each row `synced=1` on success
+
+If the Pi is offline, rows accumulate locally. The next successful connection drains the full backlog automatically — no data is lost during outages.
+
+### Configuring the API key
+
+The API key is issued by the website server via `python manage.py seed_hics`. Set it once in `sensors/config.py` on the device:
+
+```python
+API_KEY     = 'paste-key-here'
+API_NODE_ID = 'IESH-KMC-001'   # must match the Station registered on the server
+```
+
+The key is never stored in the git repo. On the Pi, the file is marked `--assume-unchanged` so `git status` stays clean.
+
+### Checking sync status
+
+```bash
+# How many rows are waiting to be synced?
+sqlite3 ~/hics-data/hics.db "SELECT COUNT(*) FROM telemetry WHERE synced=0;"
+
+# Trigger a manual upload (useful after setting the API key for the first time)
+cd ~/hics && python3 -c "from data.uploader import upload_unsynced; print(upload_unsynced(), 'rows synced')"
+
+# Live upload log
+journalctl -u hics-core -f | grep Upload
 ```
 
 ---
