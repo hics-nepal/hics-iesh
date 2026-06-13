@@ -2,6 +2,7 @@
 info.txt
 *.env
 .env*
+.claude/
 
 # Python
 __pycache__/
