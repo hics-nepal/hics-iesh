@@ -14,7 +14,8 @@ CREATE_SQL = '''
         soil_moist  REAL,
         pressure    REAL,
         mq7_raw     INTEGER,
-        mq135_raw   INTEGER
+        mq135_raw   INTEGER,
+        synced      INTEGER DEFAULT 0
     )
 '''
 
@@ -31,6 +32,16 @@ SKY_LOG_SQL = '''
     )
 '''
 
+def _migrate():
+    """Add columns introduced after initial deployment — safe to run on every startup."""
+    with sqlite3.connect(DB_PATH) as conn:
+        try:
+            conn.execute('ALTER TABLE telemetry ADD COLUMN synced INTEGER DEFAULT 0')
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
+
 def init():
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(CREATE_SQL)
@@ -38,19 +49,52 @@ def init():
         conn.execute('CREATE INDEX IF NOT EXISTS idx_ts ON telemetry(timestamp)')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_sky_ts ON sky_log(timestamp)')
         conn.commit()
+    _migrate()
 
 def log(air_temp, air_hum, soil_temp, soil_moist, pressure, mq7_raw, mq135_raw):
     try:
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute(
                 '''INSERT INTO telemetry
-                   (timestamp, air_temp, air_hum, soil_temp, soil_moist, pressure, mq7_raw, mq135_raw)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (timestamp, air_temp, air_hum, soil_temp, soil_moist,
+                    pressure, mq7_raw, mq135_raw, synced)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)''',
                 (datetime.now().isoformat(), air_temp, air_hum, soil_temp,
                  soil_moist, pressure, mq7_raw, mq135_raw)
             )
     except Exception as e:
         print(f"[DB] Write error: {e}")
+
+
+def get_unsynced(limit=500):
+    """Return up to `limit` unsynced rows as dicts, oldest first."""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                'SELECT * FROM telemetry WHERE synced = 0 ORDER BY timestamp ASC LIMIT ?',
+                (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"[DB] get_unsynced error: {e}")
+        return []
+
+
+def mark_synced(ids: list):
+    """Mark rows with given IDs as synced=1."""
+    if not ids:
+        return
+    try:
+        placeholders = ','.join('?' * len(ids))
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                f'UPDATE telemetry SET synced = 1 WHERE id IN ({placeholders})',
+                ids
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"[DB] mark_synced error: {e}")
 
 def get_recent(n=100):
     """Return the last n rows as a list of dicts, oldest first."""

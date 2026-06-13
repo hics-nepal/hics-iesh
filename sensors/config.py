@@ -51,9 +51,12 @@ DB_PATH = '/home/pawan/hics-data/hics.db'
 MQ_CAL_PATH = '/home/pawan/hics-data/mq_cal.json'
 
 # Remote API
-API_URL     = 'https://himalayansciences.org/data/api/'
-API_KEY     = ''   # set this once you have a key from the site
-API_NODE_ID = 'iesh-node-01'
+# API_KEY is printed once by: python manage.py seed_hics (on the website server)
+# API_NODE_ID is the station_id the API key is registered to.
+API_URL          = 'https://himalayansciences.org/api/v1/ingest/environmental/'
+API_KEY          = ''           # set once you have the key from seed_hics output
+API_NODE_ID      = 'IESH-KMC-001'
+FIRMWARE_VERSION = 'v0.1.0'    # increment when hardware or software changes
 
 # Network
 HOTSPOT_SSID   = 'IESH_Hub'
