@@ -26,7 +26,7 @@ from sensors.config import (
     SEA_LEVEL_HPA,
 )
 import data.database as db
-from data.uploader import upload
+from data.uploader import upload_unsynced
 from sensors import air_quality as aq
 
 SCREENS = 6
@@ -280,9 +280,9 @@ try:
 
         # ── Upload to API (when internet available) ───────────────────────────
         if now - last_upload > UPLOAD_SECS:
-            row = db.get_latest()
-            if row and upload(row):
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Uploaded to API")
+            n = upload_unsynced()
+            if n:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Uploaded {n} row(s) to API")
             last_upload = now
 
         time.sleep(1.0)
