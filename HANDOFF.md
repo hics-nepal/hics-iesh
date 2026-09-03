@@ -225,25 +225,6 @@ Verified by SSH on 2026-09-03, not assumed.
 | Services | `hics-core` + `hics-web` enabled and running |
 | Website | Station exists and ingest works; deliberately **not** in the public list (`status` outside `active`/`maintenance`) until this round is done |
 
-### The six faults, with their evidence
-Referenced as F1–F6 throughout both documents.
-
-- **F1 — undervoltage.** As above. Everything else is downstream.
-- **F2 — devices drop off buses.** BMP280 `[Errno 121]`, OLED `[Errno 5]`, DS18B20 vanishing.
-  Downstream of F1 *and* of ~40 dupont crimp+friction joints and a 400 kHz I²C clock over
-  unshielded wire.
-- **F3 — a dead sensor logged its last value forever.** `soil_temp`: **441 rows of `0.0`**
-  plus **15 rows of `85.0`** (the DS18B20 power-on-reset sentinel). `pressure`: **416 rows
-  frozen at `800.647395954495`**, bit-identical to 12 decimal places, plus 26 rows of `0.0`,
-  against only **5** plausible rows (869.8/870.7 hPa; Lalitpur at 1350 m ≈ 862 hPa).
-  **FIXED IN FIRMWARE — see §2.**
-- **F4 — no working clock.** No RTC overlay, flat coin cell. Post-outage boots mint rows
-  with wrong timestamps, and since ingest dedups on `(station, timestamp)`, those are
-  **permanent**.
-- **F5 — never ran 24 h.** See rows/day above. This is the real headline.
-- **F6 — camera dead.** `ov5647: i2c read error, reg: 300a = -5`, plus the overlay conflict.
-  Now moot until the camera goes back in.
-
 ### Which product tier this is
 This is **not** the EDU desk/classroom object. A rooftop unit at a home or a school —
 weatherised, mains present, battery for ride-through, nobody handling it — is exactly
@@ -262,8 +243,9 @@ tier 2, *"powered outdoor site (field)"*, in
 
 ## 3. The six faults, with their evidence
 
-Referenced as F1–F6 throughout. **F3 is fixed in firmware (§4). F1 and F2 are what
-the rebuild is for.**
+Referenced as F1–F6 throughout. **F1 is the root cause and F2 is its main symptom — those
+two are what the rebuild is for. F3 is fixed in firmware (§4).** F5 is the one that matters
+to anyone outside this document: the station has never run a full day.
 
 | # | Fault | Evidence |
 |---|---|---|
