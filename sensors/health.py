@@ -38,9 +38,12 @@ BOUNDS = {
 # disconnected sensor stops publishing within one or two log intervals.
 DEFAULT_MAX_AGE = 180.0
 
-# Identical raw readings in a row that mean "the register is frozen, not steady".
-# Real pressure/temperature always dithers in the last digit; a bit-identical
-# repeat this many times is a chip that reset into sleep mode holding old data.
+# Identical RAW register words in a row that mean "the register is frozen, not
+# steady". A 20-bit BMP280 pressure word always dithers in its low bits; a
+# bit-identical repeat this many times is a chip that reset into sleep mode
+# holding old data. Only applied when the caller passes ``raw`` — a compensated
+# or low-resolution value (DS18B20 at 0.0625 C, DHT22 at 0.1 C/0.1 %) repeats
+# legitimately for minutes in still conditions and must never be called frozen.
 FROZEN_REPEATS = 10
 
 
@@ -69,18 +72,21 @@ class Channel:
         if not (lo <= value <= hi):
             return   # implausible: treat exactly like a failed read
 
-        # Frozen-register detection, on the pre-compensation raw word where the
-        # caller can supply one (a compensated float can legitimately repeat).
-        key = raw if raw is not None else value
-        if key == self._last_raw:
-            self._repeats += 1
-            if self._repeats >= FROZEN_REPEATS:
-                self.frozen = True
-                return   # stop accepting a value the chip is no longer updating
-        else:
-            self._last_raw = key
-            self._repeats  = 0
-            self.frozen    = False
+        # Frozen-register detection, ONLY on a pre-compensation raw word the
+        # caller supplies. Without one there is nothing to judge: a steady
+        # low-resolution sensor repeats bit-identically for long stretches
+        # (soil at 0.0625 C steps, DHT22 at 0.1 steps, a 12-bit ADC in dry
+        # soil) and would be gated to NULL for being, in fact, steady.
+        if raw is not None:
+            if raw == self._last_raw:
+                self._repeats += 1
+                if self._repeats >= FROZEN_REPEATS:
+                    self.frozen = True
+                    return   # stop accepting a value the chip is no longer updating
+            else:
+                self._last_raw = raw
+                self._repeats  = 0
+                self.frozen    = False
 
         self._value = value
         self._stamp = time.monotonic()

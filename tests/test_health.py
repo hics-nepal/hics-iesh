@@ -75,6 +75,18 @@ def test_frozen_register():
         c.update(869.0 + i * 0.01, raw=400000 + i)
     check("dithering sensor is not called frozen", c.state, 'ok')
 
+    # No raw word -> no frozen detection. A DS18B20 buried in soil returns the
+    # identical 0.0625 C step for minutes; the DHT22 the identical 0.1 C. Both
+    # are steady, not stuck, and the first version of this gate NULLed them.
+    c = health.Channel('soil_temp')
+    for _ in range(health.FROZEN_REPEATS * 6):
+        c.update(19.0625)
+    check("steady DS18B20 (no raw) is NOT called frozen", c.for_log(), 19.0625)
+    c = health.Channel('air_hum')
+    for _ in range(health.FROZEN_REPEATS * 6):
+        c.update(61.3)
+    check("steady DHT22 humidity (no raw) is NOT called frozen", c.state, 'ok')
+
 
 def test_staleness():
     print("staleness:")

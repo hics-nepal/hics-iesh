@@ -157,21 +157,23 @@ try:
         now = time.time()
 
         # ── Read sensors (non-blocking DHT: 1 attempt, no sleep) ─────────────
-        bmp_t, bmp_p = bmp.read()
+        _, bmp_p = bmp.read()
         # Pass the uncompensated pressure word so the channel can spot a frozen
         # register: a chip that browned out into sleep keeps returning a
         # perfectly plausible — but bit-identical — number.
         ch.update('pressure', bmp_p, raw=bmp.last_raw_p)
-        # BMP280 also gives temperature — fallback when DHT22 has no fresh
-        # reading. Keyed on channel freshness, not on air_t == 0.0, which
-        # misfired at exactly 0 C.
-        if bmp_t is not None and not ch['air_temp'].fresh:
-            ch.update('air_temp', round(bmp_t, 1))
-            # Note: BMP280 has no humidity sensor — air_hum simply ages out.
+        # The BMP280's own temperature is deliberately NOT used as an air_temp
+        # fallback: it lives inside the sealed box, which runs 45-55 C in sun
+        # (HANDOFF §7). Logging the box temperature under 'air_temp' whenever
+        # the DHT22 is down is exactly the kind of plausible-looking garbage
+        # the channel gating exists to stop. NULL is honest.
 
-        ch.update('soil_moist', adc.read_soil_pct())
-        ch.update('mq7_raw',   adc.read_raw(CH_MQ7))
-        ch.update('mq135_raw', adc.read_raw(CH_MQ135))
+        # MCP3208.read_raw() returns 0 when SPI never opened; 0 is a plausible
+        # ADC word, so hand the channels None instead and let them age out.
+        if adc.ok:
+            ch.update('soil_moist', adc.read_soil_pct())
+            ch.update('mq7_raw',   adc.read_raw(CH_MQ7))
+            ch.update('mq135_raw', adc.read_raw(CH_MQ135))
 
         # Proxy AQI (None until scripts/calibrate_mq.py has been run)
         if now - last_aqi >= 10:
