@@ -692,10 +692,10 @@
 <text x="43.8" y="518.0" font-family="monospace" font-size="8" fill="#6b7280" text-anchor="end" font-weight="400" letter-spacing="0">16</text>
 <text x="43.8" y="623.0" font-family="monospace" font-size="8" fill="#6b7280" text-anchor="end" font-weight="400" letter-spacing="0">21</text>
 <text x="43.8" y="728.0" font-family="monospace" font-size="8" fill="#6b7280" text-anchor="end" font-weight="400" letter-spacing="0">26</text>
-<rect x="102.5" y="190.6" width="438.9" height="39.9" rx="3" fill="#dcdddd" stroke="#37474f" stroke-width="2.0" />
+<rect x="102.5" y="190.6" width="417.9" height="39.9" rx="3" fill="#dcdddd" stroke="#37474f" stroke-width="2.0" />
 <text x="109.5" y="204.6" font-family="monospace" font-size="9.5" fill="#37474f" text-anchor="start" font-weight="700" letter-spacing="0">2x20 FEMALE HEADER  -&gt;  Pi GPIO</text>
 <text x="109.5" y="216.6" font-family="monospace" font-size="7.8" fill="#6b7280" text-anchor="start" font-weight="400" letter-spacing="0">SOLDER ON THE UNDERSIDE - it seats down onto the Pi</text>
-<line x1="541.4" y1="210.5" x2="603.4" y2="210.5" stroke="#37474f" stroke-width="1" stroke-dasharray="3 3" stroke-linecap="round"/>
+<line x1="520.4" y1="210.5" x2="603.4" y2="210.5" stroke="#37474f" stroke-width="1" stroke-dasharray="3 3" stroke-linecap="round"/>
 <rect x="81.5" y="253.6" width="480.9" height="39.9" rx="3" fill="#f6dfda" stroke="#d94f3d" stroke-width="2.0" />
 <text x="88.5" y="267.6" font-family="monospace" font-size="9.5" fill="#d94f3d" text-anchor="start" font-weight="700" letter-spacing="0">POWER BUSES   +5 V / +3.3 V / GND</text>
 <text x="88.5" y="279.6" font-family="monospace" font-size="7.8" fill="#6b7280" text-anchor="start" font-weight="400" letter-spacing="0">three continuous rails, each tied to two Pi GND/supply pins</text>

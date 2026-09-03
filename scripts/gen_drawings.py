@@ -9,6 +9,8 @@ at 1:1, editable in Inkscape, and usable directly in poster artwork.
     python3 scripts/gen_drawings.py
     -> docs/drawings/schematic.svg
     -> docs/drawings/perfboard.svg
+    -> docs/drawings/pinout.svg
+    -> docs/drawings/lid-layout.svg      (positions read from docs/cad/roofbox.scad)
 
 Pin assignments are read from the same values as sensors/config.py; if you change
 one there, change it here. The header pin numbers are physical (1-40).
@@ -32,19 +34,34 @@ BOARD = '#e8ded0'   # perfboard substrate
 ACC   = '#b03a2e'
 
 # ── the net list: (pin, gpio, net, colour, destination) ─────────────────────
+# Grouped by function, not by pin number, so each bus leaves the header as a
+# block: power, then the two single-wire signals, then SPI, then I2C last -
+# the I2C pair runs straight to its device box below the ADC without crossing
+# anything.
 HEADER = [
-    (1,  '3V3',    '+3.3 V',      RAIL3, 'MCP3208 VDD+VREF · I2C trio · pull-ups · soil probe'),
-    (2,  '5V',     '+5 V',        RAIL5, 'DHT22 · MQ-7 + MQ-135 heaters'),
-    (3,  'GPIO2',  'SDA',         I2C,   'BMP280 0x76 · OLED 0x3C · DS3231 0x68'),
-    (5,  'GPIO3',  'SCL',         I2C,   'same three devices'),
-    (6,  'GND',    'GND',         GND,   'ground bus'),
+    (1,  '3V3',    '+3.3 V',      RAIL3, 'MCP3208 VDD+VREF · I2C trio · pull-ups · DHT22 · soil probes'),
+    (2,  '5V',     '+5 V',        RAIL5, 'MQ-7 + MQ-135 heaters only  (own rail preferred - §8)'),
+    (6,  'GND',    'GND',         GND,   'ground bus - tie at least TWO Pi GND pins'),
     (7,  'GPIO4',  '1-WIRE',      SIG,   'DS18B20 data  (+4k7 pull-up to 3V3)'),
     (16, 'GPIO23', 'DHT-DATA',    SIG,   'DHT22 data  (+4k7 pull-up to 3V3)'),
     (19, 'GPIO10', 'MOSI',        SPI,   'MCP3208 pin 11  Din'),
     (21, 'GPIO9',  'MISO',        SPI,   'MCP3208 pin 12  Dout'),
     (23, 'GPIO11', 'SCLK',        SPI,   'MCP3208 pin 13  CLK'),
     (24, 'GPIO8',  'CE0',         SPI,   'MCP3208 pin 10  CS/SHDN'),
+    (3,  'GPIO2',  'SDA',         I2C,   'BMP280 0x76 · OLED 0x3C · DS3231 0x68'),
+    (5,  'GPIO3',  'SCL',         I2C,   'same three devices'),
 ]
+
+# The full 40-pin header, physical layout (odd pins left column, even right).
+PI40 = [
+    '3V3', '5V', 'GPIO2 SDA', '5V', 'GPIO3 SCL', 'GND', 'GPIO4', 'GPIO14 TXD',
+    'GND', 'GPIO15 RXD', 'GPIO17', 'GPIO18', 'GPIO27', 'GND', 'GPIO22', 'GPIO23',
+    '3V3', 'GPIO24', 'GPIO10 MOSI', 'GND', 'GPIO9 MISO', 'GPIO25', 'GPIO11 SCLK',
+    'GPIO8 CE0', 'GND', 'GPIO7 CE1', 'ID_SD', 'ID_SC', 'GPIO5', 'GND', 'GPIO6',
+    'GPIO12', 'GPIO13', 'GND', 'GPIO19', 'GPIO16', 'GPIO26', 'GPIO20', 'GND', 'GPIO21',
+]
+# Spare rail pins worth using: a second GND bond and the second 3V3/5V pins.
+PI40_RAIL_SPARES = {4: '5V spare', 17: '3V3 spare', 9: 'GND spare', 14: 'GND spare', 20: 'GND spare', 25: 'GND spare'}
 
 MCP = [  # (pin, name, net)
     (1,  'CH0',  'MQ7-DIV'),   (16, 'VDD',  '+3.3 V'),
@@ -57,18 +74,38 @@ MCP = [  # (pin, name, net)
     (8,  'CH7',  '—'),         (9,  'DGND', 'GND'),
 ]
 
-# Screw terminals: (label, ways, [(way, net, colour)])
+# CAT5e conductor colours. Convention on BOTH cables: the SOLID conductor of a
+# pair carries supply or signal, the WHITE-STRIPED one carries that pair's
+# return, so a twisted pair is always a current and its own return.
+WIRE = {
+    'or': ('#f28c28', False), 'or/wh': ('#f28c28', True),
+    'gn': ('#2e9e4f', False), 'gn/wh': ('#2e9e4f', True),
+    'bl': ('#2f6fd6', False), 'bl/wh': ('#2f6fd6', True),
+    'br': ('#8b5a2b', False), 'br/wh': ('#8b5a2b', True),
+    'red': ('#d32f2f', False), 'blk': ('#222222', False),
+}
+
+# Screw terminals: (label, [(way, net, colour, conductor, sensor-end)])
+# The mast cable uses all 8 conductors. Rain gets the 8th; the LDR (also
+# optional) needs a second cable - never double up a conductor.
 TERMINALS = [
     ('MAST  CAT5e  8-way', [
-        ('1', '+5 V',      RAIL5), ('2', 'GND',        GND),
-        ('3', '+3.3 V',    RAIL3), ('4', 'GND',        GND),
-        ('5', 'DHT-DATA',  SIG),   ('6', 'MQ7-AOUT',   SIG),
-        ('7', 'MQ135-AOUT',SIG),   ('8', 'RAIN/LDR',   SIG)]),
-    ('SOIL  CAT5e  4-way', [
-        ('1', '+3.3 V',    RAIL3), ('2', 'GND',        GND),
-        ('3', 'DS18B20',   SIG),   ('4', 'SOIL-AOUT',  SIG)]),
+        ('1', '+5 V',       RAIL5, 'or',    'MQ-7 VCC + MQ-135 VCC'),
+        ('2', 'GND',        GND,   'or/wh', 'MQ-7 GND + MQ-135 GND'),
+        ('3', '+3.3 V',     RAIL3, 'gn',    'DHT22 VCC + raindrop VCC'),
+        ('4', 'GND',        GND,   'gn/wh', 'DHT22 GND + raindrop GND'),
+        ('5', 'DHT-DATA',   SIG,   'bl',    'DHT22 DATA'),
+        ('6', 'RAIN-AOUT',  SIG,   'bl/wh', 'raindrop AO   (optional - CH3)'),
+        ('7', 'MQ7-AOUT',   SIG,   'br',    'MQ-7 AOUT'),
+        ('8', 'MQ135-AOUT', SIG,   'br/wh', 'MQ-135 AOUT')]),
+    ('SOIL  CAT5e  4 of 8', [
+        ('1', '+3.3 V',     RAIL3, 'or',    'DS18B20 red + soil probe VCC'),
+        ('2', 'GND',        GND,   'or/wh', 'DS18B20 black + soil probe GND'),
+        ('3', '1-WIRE',     SIG,   'bl',    'DS18B20 yellow (DATA)'),
+        ('4', 'SOIL-AOUT',  SIG,   'gn',    'soil probe AOUT')]),
     ('POWER  2-way', [
-        ('1', '+5 V in',   RAIL5), ('2', 'GND',        GND)]),
+        ('1', '+5 V in',    RAIL5, 'red',   'from the buck / adapter, OUTSIDE the box'),
+        ('2', 'GND',        GND,   'blk',   '')]),
 ]
 
 PASSIVES = [
@@ -127,6 +164,17 @@ def dot(x, y, r=2.6, fill=INK):
     return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{fill}"/>'
 
 
+def swatch(x, y, wire, w=26, h=10):
+    """A CAT5e conductor: solid colour, or white with a colour stripe."""
+    col, striped = WIRE[wire]
+    if not striped:
+        return rect(x, y, w, h, col, '#555', 0.6, 2)
+    o = [rect(x, y, w, h, '#fff', '#555', 0.6, 2)]
+    o.append(f'<line x1="{x+2:.1f}" y1="{y+h/2:.1f}" x2="{x+w-2:.1f}" y2="{y+h/2:.1f}" '
+             f'stroke="{col}" stroke-width="3.2" stroke-dasharray="5 3"/>')
+    return '\n'.join(o)
+
+
 def header_block(W, title, sub):
     o = [rect(0, 0, W, 999999, PAPER, 'none', 0, 0)]
     o.append(sans(38, 52, 'HICS  IESH v0.2', 13, MUTE, weight='600', ls='2.5'))
@@ -156,7 +204,7 @@ def legend(x, y):
 #   bottom band y 690-1120          passives, legend, notes
 def schematic():
     W, H = 1620, 1120
-    A, B, C, D = 60, 430, 620, 1070
+    A, B, C, D = 60, 430, 670, 1070
     TOP, ROW = 190, 38
     o = header_block(W, 'Wiring schematic',
                      'Raspberry Pi 3B+ - protoboard HAT - MCP3208 - six sensor channels.   '
@@ -177,8 +225,10 @@ def schematic():
         o.append(txt(A + 58, y + 4, gpio, 10.5, INK, weight='600'))
         o.append(txt(A + 124, y + 4, net, 10.5, col, weight='700'))
 
-    # ── zone B: bus rails, each in its own lane, ending above the bottom band
-    RAIL_BOT = ph - 14
+    # ── zone B: bus rails. They end just below the GND row: every stub and
+    # signal drawn lower down then crosses nothing, instead of running through
+    # three rails it is not connected to.
+    RAIL_BOT = rowy['GND'] + 30
     railx = {}
     for i, (nm, col) in enumerate([('+5 V', RAIL5), ('+3.3 V', RAIL3), ('GND', GND)]):
         x = B + i * 46
@@ -222,14 +272,17 @@ def schematic():
     # labelled with these net names, so drawing four wires looping around the
     # chip restates the connection while reading as dangling ends.
     for net, pin in (('MOSI', 'Din 11'), ('MISO', 'Dout 12'),
-                     ('SCLK', 'CLK 13'), ('CE0', 'CS 10')):
+                     ('SCLK', 'CLK 13'), ('CE0', 'CS 10')):   # short labels: they
+        # must end before the ADC's left-hand net labels begin
         y = rowy[net]
         o.append(line(A + 326, y, B + 128, y, SPI, 2))
         o.append(f'<path d="M {B+128:.0f} {y-4:.0f} l 9 4 l -9 4 z" fill="{SPI}"/>')
-        o.append(txt(B + 146, y + 3.5, f'ADC {pin}', 8.5, SPI, weight='700'))
+        o.append(txt(B + 146, y + 3.5, pin, 8.5, SPI, weight='700'))
 
-    # I2C bus block, below the ADC
-    iy = my + mh + 76
+    # I2C bus block: positioned so the SDA/SCL header rows land straight on
+    # its left edge - no vertical drop through the stub labels.
+    iy = rowy['SDA'] - 34
+    assert iy > my + mh + 12, 'I2C block would overlap the ADC - move SDA/SCL lower in HEADER'
     o.append(rect(mx - 40, iy, mw + 90, 112, '#fff', I2C, 1.5, 3))
     o.append(txt(mx - 28, iy + 22, 'I2C bus   @ 100 kHz  (was 400 kHz - fault F2)',
                  10.5, I2C, weight='700'))
@@ -240,19 +293,17 @@ def schematic():
         y = iy + 44 + i * 22
         o.append(txt(mx - 28, y + 4, f'{nm:<8} {addr}', 9.5, INK, weight='600'))
         o.append(txt(mx + 74, y + 4, note, 8.5, MUTE))
-    for k, net in enumerate(('SDA', 'SCL')):
+    for net in ('SDA', 'SCL'):
         y = rowy[net]
-        xg = C + 4 + k * 10
-        o.append(line(A + 326, y, xg, y, I2C, 2))
-        o.append(line(xg, y, xg, iy + 8 + k * 8, I2C, 2))
-        o.append(line(xg, iy + 8 + k * 8, mx - 40, iy + 8 + k * 8, I2C, 2))
+        o.append(line(A + 326, y, mx - 40, y, I2C, 2))
+        o.append(dot(mx - 40, y, 3, I2C))
 
     # Single-ended signals cross the board untouched (bar their pull-up) and
     # land on a terminal. Drawn as short labelled stubs rather than lines run
     # across the whole sheet through the ADC - the terminal block already names
     # them, and a wire drawn over a chip reads as a connection to it.
-    for net, dest in (('1-WIRE', 'SOIL way 3'),
-                      ('DHT-DATA', 'MAST way 5')):
+    for net, dest in (('1-WIRE', 'SOIL 3'),
+                      ('DHT-DATA', 'MAST 5')):
         y = rowy[net]
         o.append(line(A + 326, y, B + 128, y, SIG, 2))
         o.append(f'<path d="M {B+128:.0f} {y-4:.0f} l 9 4 l -9 4 z" fill="{SIG}"/>')
@@ -262,17 +313,25 @@ def schematic():
     o.append(sans(D, TOP - 22, 'Screw terminals  ->  CAT5e', 15, INK, weight='700'))
     o.append(txt(D, TOP - 6, 'two cables leave the box, not six', 9, MUTE))
     y = TOP + 6
-    for label, ways in TERMINALS:
+    for i, (label, ways) in enumerate(TERMINALS):
         bh2 = 34 + len(ways) * 22
         o.append(rect(D, y, 480, bh2, '#fff', INK, 1.5, 3))
         o.append(txt(D + 14, y + 22, label, 11, INK, weight='700'))
-        for k, (w, net, col) in enumerate(ways):
+        if i == 0:
+            o.append(txt(D + 150, y + 22, 'CAT5e', 8, MUTE, 'middle', '700'))
+            o.append(txt(D + 232, y + 22, 'at the sensor end  (solder + heatshrink)', 8, MUTE, weight='700'))
+        for k, (w, net, col, wire, dest) in enumerate(ways):
             yy = y + 40 + k * 22
             o.append(rect(D + 14, yy - 9, 19, 17, col, 'none', 0, 2))
             o.append(txt(D + 23.5, yy + 3.5, w, 9.5, '#fff', 'middle', '700'))
             o.append(txt(D + 42, yy + 3.5, net, 10, col, weight='700'))
-            o.append(line(D + 156, yy, D + 186, yy, col, 1.8))
+            o.append(swatch(D + 137, yy - 5, wire))
+            o.append(txt(D + 168, yy + 3.5, wire, 8.5, INK, weight='600'))
+            o.append(line(D + 208, yy, D + 226, yy, col, 1.8))
+            o.append(txt(D + 232, yy + 3.5, dest, 8.5, MUTE))
         y += bh2 + 16
+    o.append(txt(D, y + 2, 'solid conductor = supply/signal · striped = that pair\'s return. '
+                 'Rain takes the 8th core; an LDR needs a second cable.', 8.5, MUTE))
 
     # ── bottom band ─────────────────────────────────────────────────────────
     BY = 724
@@ -333,7 +392,7 @@ PITCH_MM = 2.54
 
 ZONES = [
     # (col0, row0, cols, rows, label, sub, colour)
-    (2,  0,  21, 2,  '2x20 FEMALE HEADER  ->  Pi GPIO', 'SOLDER ON THE UNDERSIDE - it seats down onto the Pi', '#37474f'),
+    (2,  0,  20, 2,  '2x20 FEMALE HEADER  ->  Pi GPIO', 'SOLDER ON THE UNDERSIDE - it seats down onto the Pi', '#37474f'),
     (1,  3,  23, 2,  'POWER BUSES   +5 V / +3.3 V / GND', 'three continuous rails, each tied to two Pi GND/supply pins', RAIL5),
     (2,  6,  10, 8,  'MCP3208  DIP-16', 'ALREADY SOLDERED - keep it, do not redo', SPI),
     (13, 6,  10, 8,  'MQ DIVIDERS  R3-R6  +  C2 1000uF', 'analogue: keep at the opposite end from the DHT/I2C lines', SIG),
@@ -440,9 +499,336 @@ def perfboard():
             f'{body}\n</svg>\n')
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  SHEET 3 — Pi header pinout and the two cables end to end
+# ════════════════════════════════════════════════════════════════════════════
+# The thing to have beside you while soldering: the 40-pin header as it sits on
+# the Pi (pin 1 top-left, odd pins in the left column), used pins in their net
+# colour, and each CAT5e conductor traced from its screw-terminal way to the
+# sensor pin it is soldered to at the far end.
+def pinout():
+    W, H = 1620, 1120
+    o = header_block(W, 'Header pinout and cable map',
+                     'Pi 3B+ 40-pin header, looking down on the board with pin 1 at the '
+                     'SD-card end.   Every used pin in its net colour; every CAT5e core '
+                     'traced terminal -> sensor.')
+    used = {pin: (net, col) for pin, _g, net, col, _d in HEADER}
+
+    # ---- the header ----
+    hx, hy, P = 170, 212, 42          # column x, first-row y, row pitch
+    o.append(rect(hx - 96, hy - 58, 340, 20 * P + 52, '#eef3ee', '#2f6b46', 1.6, 6))
+    o.append(sans(hx - 84, hy - 38, 'Pi 3B+ header', 11.5, '#2f6b46', weight='700'))
+    o.append(txt(hx - 84, hy - 24, 'board edge to the RIGHT (even pins), SD-card end at the top', 8, MUTE))
+    for row in range(20):
+        for colm in range(2):
+            pin = row * 2 + colm + 1
+            x = hx + colm * 80
+            y = hy + row * P
+            name = PI40[pin - 1]
+            if pin in used:
+                net, col = used[pin]
+                o.append(f'<rect x="{x-14:.1f}" y="{y-14:.1f}" width="28" height="28" rx="4" fill="{col}"/>')
+                o.append(txt(x, y + 4, str(pin), 10, '#fff', 'middle', '700'))
+                lab, lcol, wt = net, col, '700'
+            elif pin in PI40_RAIL_SPARES:
+                net = PI40_RAIL_SPARES[pin]
+                col = {'5V': RAIL5, '3V3': RAIL3, 'GND': GND}[net.split()[0]]
+                o.append(f'<rect x="{x-14:.1f}" y="{y-14:.1f}" width="28" height="28" rx="4" '
+                         f'fill="{tint(col, 0.25)}" stroke="{col}" stroke-width="1.4" stroke-dasharray="3 2"/>')
+                o.append(txt(x, y + 4, str(pin), 10, col, 'middle', '700'))
+                lab, lcol, wt = net, col, '600'
+            else:
+                o.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="12" fill="#fff" stroke="#b9bec6" stroke-width="1.2"/>')
+                o.append(txt(x, y + 4, str(pin), 9.5, '#8a9099', 'middle'))
+                lab, lcol, wt = name, '#8a9099', '400'
+            # label: left column reads outward to the left, right column to the right
+            if colm == 0:
+                o.append(txt(x - 20, y + 3.5, lab, 8.5, lcol, 'end', wt))
+            else:
+                o.append(txt(x + 20, y + 3.5, lab, 8.5, lcol, 'start', wt))
+    o.append(txt(hx - 84, hy + 20 * P + 6,
+                 'square = wired on the HAT · dashed = spare rail pin worth bonding', 8.5, MUTE))
+    o.append(txt(hx - 84, hy + 20 * P + 20,
+                 'Pi 3B+ has 1k8 pull-ups on pins 3/5 already - add none.', 8.5, ACC, weight='700'))
+
+    # ---- cables end to end ----
+    cx = 560
+    o.append(sans(cx, hy - 16, 'Cables, terminal -> sensor', 15, INK, weight='700'))
+    o.append(txt(cx, hy, 'Two joints per conductor and nothing between: screw terminal in the box, '
+                 'solder + heatshrink at the sensor. Cable is cheaper than a roof trip.', 8.5, MUTE))
+    cols = [(cx, 'WAY'), (cx + 60, 'NET'), (cx + 175, 'CORE'), (cx + 300, 'SOLDER TO AT THE FAR END')]
+    y = hy + 30
+    for x, h in cols:
+        o.append(txt(x, y - 14, h, 7.5, MUTE, weight='700', ls='1'))
+    for label, ways in TERMINALS:
+        o.append(rect(cx - 12, y - 6, 1000, 30 + len(ways) * 24, '#fff', INK, 1.3, 3))
+        o.append(txt(cx, y + 12, label, 10.5, INK, weight='700'))
+        for k, (w, net, col, wire, dest) in enumerate(ways):
+            yy = y + 36 + k * 24
+            o.append(rect(cx, yy - 9, 19, 17, col, 'none', 0, 2))
+            o.append(txt(cx + 9.5, yy + 3.5, w, 9.5, '#fff', 'middle', '700'))
+            o.append(txt(cx + 60, yy + 3.5, net, 10, col, weight='700'))
+            o.append(swatch(cx + 175, yy - 5, wire))
+            o.append(txt(cx + 206, yy + 3.5, wire, 8.5, INK, weight='600'))
+            o.append(line(cx + 250, yy, cx + 290, yy, col, 1.8))
+            o.append(txt(cx + 300, yy + 3.5, dest, 9.5, INK))
+        y += 30 + len(ways) * 24 + 18
+
+    # what each sensor's pins are, so the far end can be soldered without a datasheet
+    o.append(sans(cx, y + 10, 'Sensor pins at the far end', 12.5, INK, weight='700'))
+    pins = [
+        ('DHT22 (3-pin breakout)', 'VCC -> gn   DATA -> bl   GND -> gn/wh.   3.3 V supply on purpose: keeps DATA at 3.3 V logic and off the heater rail.'),
+        ('MQ-7 / MQ-135 modules',  'VCC -> or   GND -> or/wh   AOUT -> br (MQ-7) / br/wh (MQ-135).   DOUT unused.   Heaters ~150 mA each - hence their own pair.'),
+        ('Raindrop board',         'VCC -> gn   GND -> gn/wh   AO -> bl/wh.   At 3.3 V its AO is already 0-3.3 V: straight into CH3, no divider.'),
+        ('DS18B20 waterproof',     'red -> or   black -> or/wh   yellow -> bl.   R1 4k7 DATA->3V3 lives on the HAT, not at the probe.'),
+        ('Capacitive soil v1.2',   'VCC -> or   GND -> or/wh   AOUT -> gn.   Pot the top 25 mm. Calibrated at 3.3 V (SOIL_DRY 4021) - keep it on 3.3 V.'),
+    ]
+    for i, (nm, what) in enumerate(pins):
+        yy = y + 34 + i * 22
+        o.append(txt(cx, yy, nm, 9.5, INK, weight='700'))
+        o.append(txt(cx + 190, yy, what, 8.5, MUTE))
+
+    o.append(txt(hx - 84, H - 30,
+                 'Generated by scripts/gen_drawings.py from the same net list as sheets 1 and 2.',
+                 9, MUTE))
+    body = '\n'.join(o)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
+            f'viewBox="0 0 {W} {H}">\n<rect width="{W}" height="{H}" fill="{PAPER}"/>\n'
+            f'{body}\n</svg>\n')
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  SHEET 4 — lid layout, dimensioned, from the CAD constants
+# ════════════════════════════════════════════════════════════════════════════
+# Reads the numbers straight out of docs/cad/roofbox.scad (same parser as
+# roofbox_check.py) so this sheet cannot disagree with the CAD. It is the
+# sheet to have on the bench when bonding standoffs to the lid: every position
+# as a distance from the lid centre, in mm.
+import math
+import re
+
+SCAD = os.path.join(os.path.dirname(OUT), 'cad', 'roofbox.scad')
+
+
+def scad_constants():
+    src = re.sub(r'//[^\n]*', '', open(SCAD).read())
+    ns = {'sqrt': math.sqrt}
+    for m in re.finditer(r'(?<![\w.])([A-Z][A-Z0-9_]*)\s*=\s*([^;{}]+?);', src):
+        try:
+            ns[m.group(1)] = eval(m.group(2).strip(), {'__builtins__': {}}, ns)
+        except Exception:
+            pass
+    return ns
+
+
+def lid_layout():
+    V = scad_constants()
+    W, H = 1620, 1120
+    o = header_block(W, 'Lid layout',
+                     'The container lid as chassis plate, seen from INSIDE the box (the side the parts bond to).   '
+                     'Positions in mm from the lid centre. Nothing is drilled today: standoffs are bonded, '
+                     'the tower bore waits for the camera.')
+    K = 4.7                                  # px per mm
+    cx, cy = 470, 600                        # lid centre on the sheet
+    lid = V['LID_W']
+
+    def X(x): return cx + x * K
+    def Y(y): return cy - y * K             # +y up on the sheet
+
+    def box(x0, y0, w, h, col, label, sub='', fill=None, dash=None):
+        o.append(rect(X(x0), Y(y0 + h), w * K, h * K, fill or tint(col, 0.18), col, 1.8, 3,
+                      f'stroke-dasharray="{dash}"' if dash else ''))
+        o.append(txt(X(x0) + 6, Y(y0 + h) + 14, label, 9.5, col, weight='700'))
+        if sub:
+            o.append(txt(X(x0) + 6, Y(y0 + h) + 26, sub, 8, MUTE))
+
+    # lid, wall line, gasket band
+    o.append(rect(X(-lid / 2), Y(lid / 2), lid * K, lid * K, '#dfe6ef', INK, 1.6, 14 * K))
+    bt = V['BOX_TOP']
+    o.append(rect(X(-bt / 2), Y(bt / 2), bt * K, bt * K, 'none', MUTE, 1, 14 * K, 'stroke-dasharray="4 3"'))
+    inner = bt - 2 * V['BOX_WALL'] - 6
+    o.append(rect(X(-inner / 2), Y(inner / 2), inner * K, inner * K, 'none', ACC, 1.2, 12 * K, 'stroke-dasharray="4 3"'))
+    o.append(txt(X(0), Y(inner / 2) - 6, 'GASKET BAND - nothing through the lid outside this line', 8, ACC, 'middle', '700'))
+    o.append(txt(X(0), Y(lid / 2) - 8, f'lid {lid:.0f} x {lid:.0f} mm (assumed, U1)', 8.5, MUTE, 'middle'))
+
+    # parts
+    px, py = V['PI_ORG']
+    box(px, py, V['PI_W'], V['PI_D'], '#2f6b46', '', '')
+    o.append(txt(X(px) + 6, Y(py) - 22, 'Raspberry Pi 3B+  85 x 56', 9.5, '#2f6b46', weight='700'))
+    o.append(txt(X(px) + 6, Y(py) - 10, f'corner at ({px:+.0f}, {py:+.0f})  -  M2.5 standoffs on a 58 x 49 grid, BONDED', 8, MUTE))
+    for hx, hy in V['PI_MH']:
+        o.append(dot(X(px + hx), Y(py + hy), 3.2, '#2f6b46'))
+        o.append(txt(X(px + hx) + 6, Y(py + hy) + 12, f'({px + hx:+.1f}, {py + hy:+.1f})', 7, '#2f6b46'))
+    bx, by = V['BUCK_ORG']
+    box(bx, by, V['BUCK_W'], V['BUCK_D'], '#0b6e4f', 'buck 12V->5V',
+        f'({bx:+.0f}, {by:+.0f})  {V["BUCK_W"]:.0f} x {V["BUCK_D"]:.0f} - U8, measure')
+    cxx, cyy = V['CAM_ORG']
+    tw, td = V['TOWER_OX'] + 0.6, V['TOWER_OY'] + 0.6
+    box(cxx - tw / 2, cyy - td / 2, tw, td, '#b03a2e', 'TOWER BORE',
+        f'centre ({cxx:+.0f}, {cyy:+.0f})  {tw:.1f} x {td:.1f} - witness only', fill='#fff', dash='5 3')
+    sx, sy = V['CSI_XY']
+    o.append(dot(X(sx), Y(sy), 3.5, '#e0b000'))
+    o.append(txt(X(sx) + 7, Y(sy) + 3, 'CSI (ribbon leaves the Pi here)', 7.5, '#8a6d00', weight='700'))
+    tm = V['TIE_MOUNT']
+    for y in V['CLAMP_YS']:
+        box(V['CLAMP_X'] - tm / 2, y - tm / 2, tm, tm, '#546e7a', 'tie', f'({V["CLAMP_X"]:+.0f}, {y:+.0f})')
+
+    # centre lines + scale
+    o.append(line(X(-lid / 2 - 6), Y(0), X(lid / 2 + 6), Y(0), MUTE, 0.8, '6 4'))
+    o.append(line(X(0), Y(-lid / 2 - 6), X(0), Y(lid / 2 + 6), MUTE, 0.8, '6 4'))
+    for v in range(-70, 71, 10):
+        o.append(line(X(v), Y(-lid / 2 - 8), X(v), Y(-lid / 2 - 14), MUTE, 0.8))
+        o.append(txt(X(v), Y(-lid / 2 - 20), f'{v:+d}', 7, MUTE, 'middle'))
+        o.append(line(X(-lid / 2 - 8), Y(v), X(-lid / 2 - 14), Y(v), MUTE, 0.8))
+        o.append(txt(X(-lid / 2 - 18), Y(v) + 2.5, f'{v:+d}', 7, MUTE, 'end'))
+    o.append(txt(X(0), Y(-lid / 2 - 34), 'mm from the lid centre  ·  +x to the right, +y up  ·  '
+                 'the Pi USB stack faces +x, its CSI edge faces -y', 8.5, MUTE, 'middle'))
+
+    # right-hand notes
+    nx = 1010
+    o.append(sans(nx, 190, 'What this settles', 15, INK, weight='700'))
+    notes = [
+        ('No holes today.',
+         'Standoffs (Pi, buck) bond to the lid underside with epoxy or neutral-cure silicone. '
+         'Cable ties go on adhesive mounts. The gasket band stays untouched.'),
+        ('One hole, later.',
+         f'The camera tower bore, {tw:.1f} x {td:.1f} mm, cut only when the camera is verified '
+         'and the printed tower has been test-fitted to the real fisheye (U2/U3).'),
+        ('Ribbon.',
+         f'CSI connector at ({sx:+.0f}, {sy:+.0f}); tower centre at ({cxx:+.0f}, {cyy:+.0f}). '
+         f'roofbox_check.py puts the FFC path at ~90 mm of the 110 mm on hand.'),
+        ('Field.',
+         f'Everything sits inside +/-{V["USABLE"]/2:.0f} mm - clear of the seal channel - '
+         'and no two footprints overlap. Checked numerically, not by eye.'),
+        ('Stack.',
+         f'Lid -> Pi standoff {V["STANDOFF_LID"]:.0f} -> Pi -> {V["SOCKET_GAP"]:.1f} socket -> HAT: '
+         f'{V["Z_HAT"] + V["HAT_T"] + 16:.1f} mm to the tallest part, in {V["BOX_H"] - V["BOX_WALL"]:.0f} mm of box.'),
+        ('Glands.',
+         f'Not on the lid. Three PG7 ({V["GLAND_HOLE"]} mm holes) in one side wall, '
+         f'{V["GLAND_Z"]:.0f} mm up, {V["GLAND_PITCH"]:.0f} mm apart - templates/roofbox_drill_wall.svg.'),
+    ]
+    y = 222
+    for head, body in notes:
+        o.append(txt(nx, y, head, 10.5, INK, weight='700'))
+        words, ln, yy = body.split(), '', y + 16
+        for wd in words:
+            if len(ln) + len(wd) > 66:
+                o.append(txt(nx, yy, ln, 9, MUTE)); ln = wd; yy += 14
+            else:
+                ln = (ln + ' ' + wd).strip()
+        o.append(txt(nx, yy, ln, 9, MUTE))
+        y = yy + 30
+
+    o.append(txt(nx, H - 30, 'Generated by scripts/gen_drawings.py from docs/cad/roofbox.scad - '
+                 'change the CAD, not this sheet.', 9, MUTE))
+    body = '\n'.join(o)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
+            f'viewBox="0 0 {W} {H}">\n<rect width="{W}" height="{H}" fill="{PAPER}"/>\n'
+            f'{body}\n</svg>\n')
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  bench.html — the four sheets, the key renders and the gates on one page
+# ════════════════════════════════════════════════════════════════════════════
+import base64
+
+GATES = [
+    ('1', 'Power', '`vcgencmd get_throttled` reads `0x0` and stays there for an hour with both MQ heaters on. Meter pins 2/6: below 4.75 V is the fault.'),
+    ('2', 'Config + clock', '`sudo scripts/pi_config.sh` · fit the CR2032 · reboot · `sudo hwclock -w` · `/dev/rtc0` exists · `hwclock -r` is right.'),
+    ('3', 'Protoboard', 'Header, ground strip and rails first; continuity-check every net before any IC goes on. Then R1-R6, C1, C2, terminals, labels.'),
+    ('4', 'Services', '`sudo systemctl restart hics-core hics-web`; the log shows `Logged to DB ... | NULL: ...` naming exactly the disconnected channels. `gate_check.py` G6.'),
+    ('5', 'One sensor at a time', 'I2C trio -> ADC + soil -> DS18B20 -> DHT22 -> MQ pair, `tests/test_all.py --skip camera` after each.'),
+    ('6', '24 h on the bench', '~1440 rows for a day, throttled still `0x0`. Closes F5 - the station has never done this.'),
+    ('7', 'Lid, glands, seal', 'Bond standoffs (sheet 4); three PG7 holes + vent in one side wall (wall template); silicone cures 24 h. The lid is not drilled.'),
+    ('8', 'Mast and pod', 'Shield, pod, rain plate on the PVC; solder + heatshrink at every sensor; drip loops.'),
+    ('9', 'Roof', 'Box on the tile under the hood table, mast clamped, probes in the biggest vase. 48 h clean data before going public.'),
+]
+
+
+def _svg_inline(name):
+    with open(os.path.join(OUT, f'{name}.svg')) as f:
+        return f.read().split('?>', 1)[-1]
+
+
+def _img(path):
+    full = os.path.join(os.path.dirname(OUT), 'cad', 'renders', path)
+    if not os.path.exists(full):
+        return ''
+    with open(full, 'rb') as f:
+        return 'data:image/png;base64,' + base64.b64encode(f.read()).decode()
+
+
+def bench_html():
+    css = """
+    :root{--ink:#1a1d21;--mute:#6b7280;--ground:#f3f1ec;--paper:#fbfaf8;--card:#ffffff;--acc:#b03a2e;--sig:#2e8b6f;--line:#d9d4cc;--code:#ece7dd}
+    @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#e6e2da;--mute:#9aa0a8;--ground:#14171b;--paper:#1b1f24;--card:#1f2429;--acc:#d9664f;--sig:#4fb08f;--line:#343a42;--code:#2a3037}}
+    :root[data-theme="dark"]{--ink:#e6e2da;--mute:#9aa0a8;--ground:#14171b;--paper:#1b1f24;--card:#1f2429;--acc:#d9664f;--sig:#4fb08f;--line:#343a42;--code:#2a3037}
+    body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+    header{padding:30px 24px 14px;border-bottom:2px solid var(--ink);background:var(--paper)}
+    header .eyebrow{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+    header h1{margin:0;font-size:28px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+    header p{margin:6px 0 0;color:var(--mute);max-width:65ch}
+    nav{position:sticky;top:0;background:var(--paper);border-bottom:1px solid var(--line);padding:8px 24px;display:flex;gap:18px;flex-wrap:wrap;font:600 12.5px/1.6 "IBM Plex Mono",monospace;z-index:2}
+    nav a{color:var(--ink);text-decoration:none}nav a:hover,nav a:focus-visible{color:var(--acc);outline:none;text-decoration:underline}
+    section{padding:22px 24px 26px;border-bottom:1px solid var(--line)}
+    h2{font-size:18px;font-weight:600;margin:0 0 12px;text-wrap:balance}
+    .sheet{overflow-x:auto;background:#fbfaf8;border:1px solid var(--line);border-radius:4px}
+    .sheet svg{display:block;min-width:900px;width:100%;height:auto}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+    figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:8px}
+    figure img{width:100%;height:auto;display:block;border-radius:2px;background:#f7f7f7}
+    figcaption{font-size:12.5px;color:var(--mute);margin-top:6px}figcaption b{color:var(--ink)}
+    ol.gates{list-style:none;padding:0;margin:0}
+    ol.gates li{display:grid;grid-template-columns:34px 160px 1fr;gap:12px;padding:11px 0;border-bottom:1px dashed var(--line);align-items:start}
+    ol.gates li span.n{font:600 13px/1 "IBM Plex Mono",monospace;background:var(--ink);color:var(--ground);border-radius:3px;text-align:center;padding:6px 0;font-variant-numeric:tabular-nums}
+    ol.gates li b{font-size:14px;font-weight:600}
+    code{font-family:"IBM Plex Mono",monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:12.5px}
+    .warn{border-left:4px solid var(--acc);padding:10px 14px;background:var(--card);margin:0 0 14px;max-width:72ch}
+    footer{padding:18px 24px;color:var(--mute);font-size:12.5px;max-width:80ch}
+    @media (max-width:640px){ol.gates li{grid-template-columns:30px 1fr}ol.gates li div{grid-column:2}}
+    @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+    """
+    def md(t):  # backticks -> code
+        return re.sub(r'`([^`]+)`', r'<code>\1</code>', esc(t))
+    gates = ''.join(f'<li><span class="n">{n}</span><b>{esc(t)}</b><div>{md(d)}</div></li>' for n, t, d in GATES)
+    renders = [
+        ('site', 'Whole station on the roof', 'tile, box under the hood table, mast with shield / rain plate / gas pod, vase, junction box, the three cable runs'),
+        ('service', 'The box as it stands', 'hood table on four PVC legs, tower proud of the hood, nothing bolted to the lid'),
+        ('section2d', 'Exact section through the tower', '2D cut on the tower centre plane: lip, ring, board, ribbon, Pi + HAT under the lid, hood gap'),
+        ('exploded', 'Hood plate / lid stack / body', 'what bonds to the lid: Pi on standoffs, HAT on the header, buck, tower, tie mounts'),
+        ('plan', 'Lid from the inside', 'the footprints that roofbox_check.py keeps apart'),
+        ('mast', 'Mast', 'shield at 1.4 m, rain plate, gas pod open downward'),
+        ('tower2d', 'Tower section', 'the one printed part - print after measuring U2/U3'),
+        ('drill_wall', 'Side-wall template', 'three 12.5 mm PG7 holes 32 mm up, vent high; print at 100 %'),
+    ]
+    figs = ''.join(
+        f'<figure><img src="{_img(n + ".png")}" alt="{esc(t)}"><figcaption><b>{esc(t)}</b> - {esc(d)}</figcaption></figure>'
+        for n, t, d in renders if _img(n + '.png'))
+    sheets = ''.join(
+        f'<section id="{n}"><h2>Sheet {i} - {esc(t)}</h2><div class="sheet">{_svg_inline(n)}</div></section>'
+        for i, (n, t) in enumerate([('schematic', 'Wiring schematic'), ('perfboard', 'Perfboard placement'),
+                                    ('pinout', 'Header pinout and cable map'), ('lid-layout', 'Lid layout')], 1))
+    return f"""<title>IESH Bench Sheet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>{css}</style>
+<header><div class="eyebrow">HICS · IESH v0.2 · Lalitpur rooftop</div><h1>Bench sheet</h1><p>The four drawing sheets, the CAD views and the commissioning gates, generated from one net list and one CAD file. HANDOFF.md is the narrative; this is what sits next to the soldering iron.</p></header>
+<nav><a href="#gates">Gates</a><a href="#schematic">1 Schematic</a><a href="#perfboard">2 Perfboard</a><a href="#pinout">3 Pinout + cables</a><a href="#lid-layout">4 Lid</a><a href="#views">Views</a></nav>
+<section id="gates"><h2>Build order - each step gated (HANDOFF section 14)</h2>
+<div class="warn"><b>Nothing below step 1 is meaningful until <code>get_throttled</code> reads <code>0x0</code>.</b> F1 is the root cause; rebuilding wiring on a sagging rail just produces better-looking intermittency.</div>
+<ol class="gates">{gates}</ol></section>
+{sheets}
+<section id="views"><h2>Views</h2><div class="grid">{figs}</div></section>
+<footer>HICS - Himalayan Institute for Contextual Sciences - IESH v0.2. Not calibrated; one station, one rooftop, 1350 m; the container is the proof-of-concept housing, not the product.</footer>
+"""
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
-    for name, fn in (('schematic', schematic), ('perfboard', perfboard)):
+    for name, fn in (('schematic', schematic), ('perfboard', perfboard),
+                     ('pinout', pinout), ('lid-layout', lid_layout)):
         with open(os.path.join(OUT, f'{name}.svg'), 'w') as f:
             f.write(fn())
         print(f'wrote docs/drawings/{name}.svg')
+    with open(os.path.join(os.path.dirname(OUT), 'bench.html'), 'w') as f:
+        f.write(bench_html())
+    print('wrote docs/bench.html')

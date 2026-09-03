@@ -2,7 +2,9 @@
 
 > **The single document for this work** — everything a fresh session or a new person needs
 > in order to pick it up and redo it in detail. Established **2026-09-03** from a live
-> diagnosis of the station at `pawan@iesh.local`.
+> diagnosis of the station at `pawan@iesh.local`; audited and extended the same evening
+> (§4 second pass, §16.8). **Bench-ready: start at [`docs/README.md`](docs/README.md)** for
+> the sheets, then §14.
 >
 > Read §1 first if you don't know the repos; §3 for what is broken and how we know; §16 for
 > what to question rather than inherit; §14 for what to actually do.
@@ -264,7 +266,7 @@ to anyone outside this document: the station has never run a full day.
 Commit `2acdd13` on `master`. **Synced to the Pi but not yet running** — the services were
 never restarted (`deploy.sh --restart` can't do it; the `sudo` step needs a TTY password).
 That is *not* a loose end to chase: the station is being torn down and rebuilt, so the
-restart happens naturally during bench bring-up (§14 step 3). It matters only that you know
+restart happens naturally during bench bring-up (§14 step 4). It matters only that you know
 the code on disk is newer than the code in the running process, so **the log you see before
 a restart is v0.1's behaviour, not the fixed behaviour.**
 
@@ -282,13 +284,25 @@ a restart is v0.1's behaviour, not the fixed behaviour.**
 not. `data/database.py` already declared every sensor column nullable; v0.1 simply never
 wrote one.
 
+### Second pass, same evening — audit of the above, committed
+
+| File | Change |
+|---|---|
+| `sensors/health.py` | **Bug in the frozen-register gate.** It compared the *compensated value* when no raw word was given, so a DS18B20 buried in still soil (identical 0.0625 °C reads for minutes) or a DHT22 at a steady 0.1 °C would be declared *frozen* and logged `NULL` — the 24 h bench gate (§14 step 6) would have failed on healthy sensors. Frozen detection now runs **only** when the caller supplies `raw` (the BMP280 does). Two regression tests added; 23 checks pass. |
+| `core_dash.py` | Removed the BMP280-as-`air_temp` fallback: the BMP280 sits inside a box that runs 45–55 °C in sun (§7), so that fallback would log the *box* temperature as air temperature whenever the DHT22 dropped out — exactly the plausible-looking garbage the gating exists to stop. ADC channels are handed `None` (not 0) when SPI never opened. |
+| `tests/test_all.py` | `--skip camera` / `--only bmp280,oled,rtc`; test order is now the §14 step 5 bring-up order. |
+| `scripts/pi_config.sh` **(new)** | Applies §11.1–11.3 to `config.txt` idempotently (`--dry-run` shows the diff). Backs up first. |
+| `scripts/gate_check.py` **(new)** | The §14 gates as one command on the station: throttle flags, `config.txt`, RTC vs system clock, I²C scan, 1-Wire (with a 3 s re-scan to catch F2), services + the `| NULL:` log note, rows/day and today's NULL share. |
+| `scripts/gen_drawings.py` | Schematic re-routed (no line crosses a rail or a label); terminals carry the **CAT5e core colour**; new sheets **3** (header pinout + cable map) and **4** (lid layout, dimensioned, read from the CAD). Mast cable core map changed — see §10. DHT22 moved to the 3.3 V pair. |
+| `docs/cad/` **(moved here)** | `roofbox.scad` + `roofbox_check.py` + `render.sh` now live in this repo (§6). Design revised: camera **tower** through the hood, **free-standing hood table**, **no lid holes**, lens under a lip, PG7 hole size corrected (12.5 mm, not 7). §16.8 says why. |
+
 ---
 
 ## 5. Reference photographs and the parts inventory
 
 ### Photographs
 In `docs/reference-photos/` (1400 px, ~850 KB total) so the docs don't depend on paths
-outside the repo. **Several assumptions in §5 were read off these images — which is exactly
+outside the repo. **Several assumptions in §17 were read off these images — which is exactly
 why they need calipers.**
 
 **[`01-circuit-as-built-cardboard.jpg`](docs/reference-photos/01-circuit-as-built-cardboard.jpg)
@@ -308,9 +322,9 @@ the wall edge.
 
 **[`04-camera-and-clipon-fisheye.jpg`](docs/reference-photos/04-camera-and-clipon-fisheye.jpg)
 — the constraint that shaped the enclosure.** OV5647 "Raspberry Pi Camera Rev 1.3", board
-**25 × 24 mm**, with its ribbon at **~110 mm — and that is what forces lid-up (§4.1)**.
+**25 × 24 mm**, with its ribbon at **~110 mm — and that is what forces lid-up (§16.1)**.
 Also the clip-on phone fisheye: a knurled-ring lens element on a hinged clip, which is what
-`cam_mount` seats. `FE_RING_D`, `FE_RING_H` and `FE_BACK` (U2, U3) were all guessed from
+`cam_tower` seats. `FE_RING_D`, `FE_RING_H` and `FE_BACK` (U2, U3) were all guessed from
 this photo.
 
 ### Dimensions on record
@@ -362,54 +376,59 @@ sitech.com.np. Bill images are deliberately not committed; this transcription is
   debugged. There is **no spare BMP280** (U7).
 - **Two 10 × 15 cm matrix boards** — cut one to 65 × 70 mm and a whole spare remains.
 - **A multimeter is on hand**, so F1 can be settled by measurement, not inference.
-- **Only 2× 3-pin terminals** — about 16 ways are needed. On the shopping list.
+- **Only 2× 3-pin terminals** — 14 ways are needed (8 + 4 + 2). On the shopping list.
 - **Unused and worth fitting:** raindrop ×2 (CH3 free), LDR ×4 (CH4 free).
 - **Unused, no role here:** PIR, mic, buzzer, relays, switches. The *waterproof ultrasonic*
   is interesting later as a **snow-depth or water-level** channel — a Himalayan-transect
   story, not a Lalitpur-rooftop one.
 - ⚠ **U4:** "Resistors ×30" does not say the values. R1–R6 all need **4k7**.
 - ⚠ **U5:** the ₨650 "boom/boost module" is unidentified. If it is a 12 V→5 V buck it may
-  serve the power design directly (§4.5).
+  serve the power design directly (§16.5).
 
 ### Generated drawings and renders
 
+Index with thumbnails: [`docs/README.md`](docs/README.md).
+
 | Sheet | Path |
 |---|---|
-| Wiring schematic | [`docs/drawings/schematic.svg`](docs/drawings/schematic.svg) |
-| Perfboard placement | [`docs/drawings/perfboard.svg`](docs/drawings/perfboard.svg) |
-| Box exploded view | `../iesh-production-reference/03-enclosure/cad/_roofbox/exploded.png` |
-| Box section view | `../iesh-production-reference/03-enclosure/cad/_roofbox/section.png` |
-| Camera mount | `../iesh-production-reference/03-enclosure/cad/_roofbox/cam_mount.png` |
-| Lid drilling template (1:1) | `../iesh-production-reference/03-enclosure/cad/_roofbox/roofbox_drill.svg` |
+| 1 · Wiring schematic | [`docs/drawings/schematic.svg`](docs/drawings/schematic.svg) |
+| 2 · Perfboard placement | [`docs/drawings/perfboard.svg`](docs/drawings/perfboard.svg) |
+| 3 · Header pinout + cable map | [`docs/drawings/pinout.svg`](docs/drawings/pinout.svg) |
+| 4 · Lid layout, dimensioned | [`docs/drawings/lid-layout.svg`](docs/drawings/lid-layout.svg) |
+| Whole station on the roof | [`docs/cad/renders/site.png`](docs/cad/renders/site.png) |
+| Box as it stands (hood table, tower) | [`docs/cad/renders/service.png`](docs/cad/renders/service.png) |
+| Section through the tower (exact, 2D) | [`docs/cad/renders/section2d.png`](docs/cad/renders/section2d.png) |
+| Exploded / plan / mast / tower / pod / shield | `docs/cad/renders/*.png` |
+| Lid placement template (1:1) | [`docs/cad/templates/roofbox_lid.svg`](docs/cad/templates/roofbox_lid.svg) |
+| Side-wall gland template (1:1) | [`docs/cad/templates/roofbox_drill_wall.svg`](docs/cad/templates/roofbox_drill_wall.svg) |
 
 ---
 
 ## 6. Artifacts and how to regenerate them
 
+Everything generated lives under `docs/` and is indexed in [`docs/README.md`](docs/README.md).
+
 | Artifact | Path | What it is |
 |---|---|---|
-| Build sheet | this document | 600-line rooftop build: faults, power, protoboard rework, CAT5e cabling, sensor placement, commissioning gates |
-| Wiring schematic | `docs/drawings/schematic.svg` | Pi ↔ protoboard ↔ MCP3208 ↔ terminals. Every net named; the net name is the wire label |
-| Perfboard placement | `docs/drawings/perfboard.svg` | 25 × 27 hole grid to scale, zoned placement, separation rules, keep/cut/add list |
-| Drawing generator | `scripts/gen_drawings.py` | **Edit the net list here, not the SVGs.** One source feeds both sheets so they cannot drift |
-| Box CAD | `../iesh-production-reference/03-enclosure/cad/roofbox.scad` | Third variant beside `edu.scad`/`sci.scad`. Parts: `exploded` `section` `chassis` `cam_mount` `hood` `gas_pod` `shield` `container` `drill` |
-| Renders | `../iesh-production-reference/03-enclosure/cad/_roofbox/` | `exploded.png`, `section.png`, `cam_mount.png`, `roofbox_drill.svg` |
+| Build sheet | this document | faults, power, protoboard rework, CAT5e cabling, sensor placement, commissioning gates |
+| Sheets 1–4 | `docs/drawings/*.svg` | schematic · perfboard placement · pinout + cable map · lid layout. **One net list feeds all of them** |
+| Drawing generator | `scripts/gen_drawings.py` | **Edit the net list here, not the SVGs.** Sheet 4 reads its positions from the CAD file |
+| Box + site CAD | `docs/cad/roofbox.scad` | the real container, Pi 3B+, HAT, buck, camera tower, hood table, mast, vase, cable runs. Parts listed in its header |
+| Numeric checks | `docs/cad/roofbox_check.py` | XY clash, usable field, stack height, sky clearance, ribbon reach, lid penetrations, gland spacing, **cable cut lengths** |
+| Renders + templates | `docs/cad/renders/`, `docs/cad/templates/` | PNG views; 1:1 SVG templates in mm |
+| Bench page | `docs/bench.html` | all four sheets + the key renders + the §14 gates on one page for a phone at the bench |
+| Station-side tools | `scripts/pi_config.sh`, `scripts/gate_check.py` | apply §11 · run the §14 gates |
 
 Regenerate:
 ```bash
-python3 scripts/gen_drawings.py                                     # both SVG sheets
-cd ../iesh-production-reference/03-enclosure/cad
-openscad -o out.stl  -D 'part="cam_mount"' roofbox.scad             # the one printed part
-openscad -o drill.svg -D 'part="drill"'    roofbox.scad             # 1:1 drilling template
+python3 scripts/gen_drawings.py      # sheets 1-4 + docs/bench.html
+docs/cad/render.sh                   # every render + template, then the checks (~2 min)
 ```
 
-> ⚠ `../iesh-production-reference/` **is not a git repository.** The CAD is on disk,
-> uncommitted and unversioned. Decide whether to `git init` it — this session did not, on
-> the grounds that initialising someone's repo uninvited is not a call to make silently.
->
-> `03-enclosure/cad/render_views.py` used to carry a **stale hardcoded path** (missing the
-> `hics-iesh/` segment). Fixed 2026-09-03 to resolve relative to its own file — but that
-> folder is unversioned, so the fix exists only on disk.
+> The CAD was moved here from `../iesh-production-reference/03-enclosure/cad/` (which is
+> **not a git repository** — a pointer file `ROOFBOX-MOVED.md` was left there). `edu.scad`
+> / `sci.scad` there are the product enclosures and stay put. That folder's
+> `render_views.py` had a stale absolute path; fixed on disk 2026-09-03, unversioned.
 
 ---
 
@@ -450,7 +469,13 @@ only layout that works.
 gasket, so the hood keeps direct rain off the seal. It is needed for solar gain anyway — a
 sealed box in Kathmandu sun runs 45–55 °C inside — so one part solves both. It stands off
 on legs: an air gap is what makes a shade work, and a hood touching the lid just conducts
-the heat straight in.
+the heat straight in. **The legs stand on the paving tile, not on the lid** (§16.8) — a
+198 mm plate on four 20 mm PVC legs straddling the box, so nothing bolts through the seal
+and the box lifts straight out from under it.
+
+**The camera rides a printed tower up through the hood.** A fisheye flush in the lid under
+a 32 mm hood sees a ~75° cone, not the sky. `cam_tower` (`docs/cad/`) carries the lens
+6 mm proud of the hood plate; the ribbon path is ~90 mm of the 110 mm on hand.
 
 **Cable glands move off the lid into the box side wall, low down**, so nothing faces the
 sky. Drip loops below each.
@@ -560,8 +585,8 @@ against a steel rule and snap. You keep the offcut and a whole spare board.
 
 | Signal | GPIO | Header pin | Goes to |
 |---|---|---|---|
-| 3.3 V | — | 1, 17 | MCP3208 VDD+VREF, BMP280, OLED, DS3231, DS18B20 pull-up |
-| 5 V | — | 2, 4 | DHT22, MQ heaters *(prefer a separate rail — §3)* |
+| 3.3 V | — | 1, 17 | MCP3208 VDD+VREF, BMP280, OLED, DS3231, pull-ups, **DHT22**, soil probes, raindrop |
+| 5 V | — | 2, 4 | MQ heaters only *(prefer a separate rail — §8)*. The DHT22 runs on 3.3 V on purpose: keeps its DATA at 3.3 V logic and off the heater rail |
 | GND | — | 6, 9, 14, 20, 25, 30, 34, 39 | everything |
 | I2C SDA | GPIO2 | 3 | BMP280 `0x76`, OLED `0x3C`, DS3231 `0x68` |
 | I2C SCL | GPIO3 | 5 | same three |
@@ -598,7 +623,7 @@ against a steel rule and snap. You keep the offcut and a whole spare board.
 
 > **Do not add I2C pull-ups.** The Pi 3B+ already has 1.8 kΩ on GPIO2/GPIO3. More
 > resistors in parallel over-pull the bus. The right I2C fix is **shorter wires and a
-> slower clock** — see §5.
+> slower clock** — see §11.1.
 
 ### Layout discipline on the board
 - Keep the I2C run **as short as physically possible** and route SDA/SCL side by side
@@ -611,8 +636,10 @@ against a steel rule and snap. You keep the offcut and a whole spare board.
   tape flags on the cardboard version are the reason a rebuild is needed at all.
 
 ### Screw terminals
-You have only **2× 3-pin**. Needed: mast cable (8), soil cable (4), power in (2) — about
-**4 blocks / 16 ways** with the cabling scheme below. Add to the shopping list (§8).
+You have only **2× 3-pin**. Needed: mast cable (8), soil cable (4), power in (2) —
+**3 blocks / 14 ways** with the cabling scheme below. Add to the shopping list (§13).
+Sheet 3 ([`pinout.svg`](docs/drawings/pinout.svg)) traces every way to its CAT5e core and
+to the sensor pin it is soldered to at the far end.
 
 ---
 
@@ -630,28 +657,39 @@ what you want: each supply travels twisted with its own return, which is what ke
 switching MQ heater from injecting noise into an analogue line running beside it. You
 already have a length of it (the yellow cable in the bench photo).
 
+Convention on both cables: the **solid** core of a pair carries supply or signal, the
+**white-striped** core is that pair's return — so every current travels twisted with its
+own return. Terminal way numbers match sheets 1 and 3.
+
 **Mast cable — 8 conductors, all 8 used:**
 
-| Pair | Conductor | Carries |
-|---|---|---|
-| 1 | orange / orange-white | **+5 V** / GND — MQ-7 + MQ-135 heaters, DHT22 |
-| 2 | green / green-white | **+3.3 V** / GND — raindrop board, LDR divider |
-| 3 | blue / blue-white | **DHT22 DATA** / GND |
-| 4 | brown | **MQ-7 AOUT** → MCP3208 CH0 |
-| 4 | brown-white | **MQ-135 AOUT** → MCP3208 CH1 |
+| Way | Core | Carries | Solder to, at the mast end |
+|---|---|---|---|
+| 1 | orange | **+5 V** | MQ-7 VCC + MQ-135 VCC |
+| 2 | orange-white | GND | MQ-7 GND + MQ-135 GND |
+| 3 | green | **+3.3 V** | DHT22 VCC + raindrop VCC |
+| 4 | green-white | GND | DHT22 GND + raindrop GND |
+| 5 | blue | **DHT22 DATA** → GPIO23 | DHT22 DATA |
+| 6 | blue-white | **raindrop AO** → MCP3208 CH3 | raindrop board AO *(optional)* |
+| 7 | brown | **MQ-7 AOUT** → CH0 (via R3/R4) | MQ-7 AOUT |
+| 8 | brown-white | **MQ-135 AOUT** → CH1 (via R5/R6) | MQ-135 AOUT |
 
-That leaves the LDR and raindrop analogue outputs sharing pair 2's spare capacity — if you
-fit both, run **a second short CAT5e** rather than doubling up a conductor. Cable is
-cheaper than a debugging trip to the roof.
+The heaters get their own pair because they are the only real current (~150 mA each). The
+raindrop board at 3.3 V already outputs 0–3.3 V, so CH3 needs no divider. An **LDR** would
+need a ninth core: if you fit one, run a second short CAT5e rather than doubling up a
+conductor. Cable is cheaper than a debugging trip to the roof.
 
-**Soil cable — 4 conductors to the vase:**
+**Soil cable — 4 of 8 conductors to the vase:**
 
-| Conductor | Carries |
-|---|---|
-| 1 | **+3.3 V** (both probes) |
-| 2 | GND (both probes) |
-| 3 | **DS18B20 DATA** → GPIO4 |
-| 4 | **soil moisture AOUT** → MCP3208 CH2 |
+| Way | Core | Carries | Solder to, at the vase |
+|---|---|---|---|
+| 1 | orange | **+3.3 V** | DS18B20 red + soil probe VCC |
+| 2 | orange-white | GND | DS18B20 black + soil probe GND |
+| 3 | blue | **DS18B20 DATA** → GPIO4 | DS18B20 yellow |
+| 4 | green | **soil moisture AOUT** → MCP3208 CH2 | soil probe AOUT |
+
+Cut lengths, from the site layout in the CAD (`roofbox_check.py` prints them): **mast
+2.4 m · soil 1.4 m · power 0.8 m**, slack and drip loops included.
 
 Both probes sit in the same vase, so one cable is correct — and it keeps soil temperature
 and soil moisture describing the same body of soil.
@@ -673,11 +711,12 @@ Every cable has exactly **two** joint locations, and nothing in between:
 - **Nothing taped, nowhere.** The masking-tape joints in the bench photo are the fault.
 
 ### Strain relief and drip loops — not optional
-- **Clamp each cable to the sled** with a zip tie through two holes, ~40 mm inside the
-  gland. Pull on the cable and the tie takes the load, never the screw terminal.
+- **Clamp each cable** with a zip tie on an **adhesive tie mount** bonded to the lid
+  underside (positions on sheet 4). Pull on the cable and the tie takes the load, never
+  the screw terminal. No holes in the lid for this.
 - **Drip loop below every gland**: the cable must go *down* out of the gland and hang below
-  it before rising. Water runs to the bottom of the loop and drips off. With the box
-  inverted (§2) the glands already point down, so this costs nothing but a little slack.
+  it before rising. Water runs to the bottom of the loop and drips off. The glands are
+  low in the side wall (§7), 32 mm above the box base, so the loop hangs on the tile.
 - Leave ~200 mm of slack inside the box. Tight cabling makes servicing on a roof
   unpleasant and pulls joints apart.
 
@@ -690,9 +729,11 @@ and the MQ readings drift — double up pair 1's conductors or shorten the run.
 
 ## 11. Pi configuration changes
 
-All three are edits on the device; none is optional.
+All three are edits on the device; none is optional. **`sudo scripts/pi_config.sh` applies
+11.1–11.3 in one go** (`--dry-run` first to see the diff; it backs up `config.txt`), and
+`python3 scripts/gate_check.py` confirms them afterwards.
 
-### 5.1 Slow the I2C bus — 400 kHz over unshielded wire is the F2 mechanism
+### 11.1 Slow the I2C bus — 400 kHz over unshielded wire is the F2 mechanism
 `/boot/firmware/config.txt` currently has `dtparam=i2c_arm_baudrate=400000`. Nothing on
 this bus needs 400 kHz; a 60-second log interval is happy at 100 kHz, and the noise
 margin roughly quadruples.
@@ -700,7 +741,7 @@ margin roughly quadruples.
 dtparam=i2c_arm_baudrate=100000
 ```
 
-### 5.2 Give the OS a real clock (fixes F4)
+### 11.2 Give the OS a real clock (fixes F4)
 ```
 dtoverlay=i2c-rtc,ds3231
 ```
@@ -718,13 +759,13 @@ timestamps instead of poisoning the server's dedup key forever.
 > RTC must be read before them. The kernel overlay handles this; the userspace
 > `RTC.sync_from_system()` in `sensors/rtc.py` does not and never did.
 
-### 5.3 Resolve the camera overlay conflict (F6)
+### 11.3 Resolve the camera overlay conflict (F6)
 `config.txt` carries both `camera_auto_detect=1` and `dtoverlay=ov5647`. Keep one. With
 the camera physically removed, **comment out `dtoverlay=ov5647`** so the driver stops
 retrying a chip that isn't there and filling the log with `i2c read error`. Restore it (or
 rely on auto-detect alone) when the camera goes into its own housing.
 
-### 5.4 Interface config that is now wrong for this board
+### 11.4 Interface config that is now wrong for this board
 `sensors/config.py` says `INTERNET_IFACE = 'wlan1'` and `HOTSPOT_IFACE = 'wlan0'`. A Pi
 3B+ has **one** wlan. There is no `wlan1`, so the `IESH_Hub` hotspot the README describes
 does not exist on this unit. For the Lalitpur deployment the station joins home WiFi on
@@ -742,9 +783,9 @@ hotspot section does not describe this station and should say so.
 | **MQ-7** CO, **MQ-135** gas | Mast, in a **downward-facing vented pod** | Must see ambient air, and they self-heat ~350 mW each — in the vault they'd read their own exhaust and cook the Pi. Down-facing vents keep rain out. Stay a **labelled proxy**, not a calibrated measurement (hics-docs G9). |
 | **DS18B20** soil T | **Buried in the planter**, 100 mm deep | Waterproof stainless probe version is already suitable. Needs the 4.7 kΩ pull-up. |
 | **Capacitive soil moisture** | **Buried in the planter**, blade vertical | Only meaningful *if there is soil* — see the note below. **Pot the top ~25 mm of the board in epoxy or silicone**; the v1.2 boards leave their electronics exposed above the blade and die within weeks outdoors. Re-run `scripts/calibrate_soil.py` in the actual planter soil — the current `SOIL_DRY = 4021` / `SOIL_WET = 1673` came from a different medium. |
-| **DS3231** RTC | Inside, on the HAT | **Fit a fresh coin cell.** The one in it is flat (§5.2). |
+| **DS3231** RTC | Inside, on the HAT | **Fit a fresh coin cell.** The one in it is flat (§11.2). |
 | **OLED** | Inside, or omit | A classroom feature with no outdoor purpose. Keep it on the sled for bench commissioning; don't cut a window for it. |
-| **Pi camera** (all-sky) | **In the lid**, fisheye barrel sealed into a printed boss, board bolted beneath | Forced by the **110 mm ribbon** — it cannot go on the mast. The lens is the window (§2). Print `cam_mount` from `roofbox.scad`; the one dimension to find by trial is `FE_BACK`, the lens-to-sensor gap (~2–4 mm), so print the seat shimmable. Currently removed, so this is the last thing to fit. |
+| **Pi camera** (all-sky) | **On a printed tower through the hood**, fisheye ring under a lip at the top, board on a ledge just behind it | The tower is the only lid penetration and the camera is deferred (F6) — so **do not cut the lid yet.** When it comes: print `cam_tower` from `docs/cad/roofbox.scad`, test-fit the real fisheye (U2/U3 — `FE_BACK` is found by trial, so print the ledge shimmable), then cut the bore on sheet 4. The lens is the window (§7). |
 | **Raindrop ×2** *(unused)* | Mast, plate angled ~30° | Genuinely useful, and rain is the one channel a Kathmandu monsoon story wants. Needs an ADC channel — **CH3 is free**. |
 | **LDR ×4** *(unused)* | Mast, facing up | Cheap daylight/cloud proxy, and it pairs with the sky camera later. **CH4 free.** |
 | **PIR, ultrasonic, relay, mic, buzzer** | Not in this build | Real parts, no role in a rooftop climate station. The waterproof ultrasonic is interesting later as a **snow-depth or water-level** channel — that is a Himalayan-transect story, not a Lalitpur-rooftop one. |
@@ -764,7 +805,7 @@ describe the same body of soil.
 This turns the two dead channels into the richest pair on the station — soil moisture
 against rainfall against air temperature is a genuine agronomy dataset, it directly serves
 the AIT framing, and it demos far better than a flatlined channel. It also means the
-raindrop sensors (§7) are worth fitting: rain → soil moisture response is the one
+raindrop sensors (mast, way 6) are worth fitting: rain → soil moisture response is the one
 relationship on this station that is visible within a single afternoon.
 
 What would not be defensible is leaving a probe in air and logging the number it produces.
@@ -773,41 +814,45 @@ What would not be defensible is leaving a probe in air and logging the number it
 
 ### CAD, and the one part that needs printing
 
-`../iesh-production-reference/03-enclosure/cad/roofbox.scad` — a third variant alongside
-`edu.scad` and `sci.scad`, modelling the **real container with the real Pi 3B+** (the
-existing library models a Pi 4B). It exists to fit-check, place the sensors, and emit the
-drilling template — not to be a production enclosure.
+`docs/cad/roofbox.scad` models the **real container with the real Pi 3B+** (the product
+library models a 4B), the HAT, the buck, the camera tower, the hood table, and — at 1:1 —
+the whole site: tile, mast with shield and gas pod, vase with probes, junction box and the
+three cable runs. It exists to fit-check, place the sensors, argue about distances, and
+emit the templates — not to be a production enclosure.
 
 ```bash
-cd ../iesh-production-reference/03-enclosure/cad
-openscad -o out.stl -D 'part="cam_mount"' roofbox.scad     # the one printed part
-openscad -o drill.svg -D 'part="drill"'   roofbox.scad     # 1:1 drilling template
+docs/cad/render.sh                                          # every view + template + checks
+openscad -o tower.stl -D 'part="cam_tower"' docs/cad/roofbox.scad   # the one printed part
 ```
 
-Parts: `exploded` · `section` · `chassis` · `cam_mount` · `hood` · `gas_pod` · `shield` ·
-`container` · `drill`. Renders in `cad/_roofbox/`.
+Views: `site` · `service` · `exploded` · `plan` · `mast` · `cam_tower` · `gas_pod` ·
+`shield` · `container`; exact 2D sections `section2d` · `tower2d`; 1:1 templates `lid` ·
+`drill_wall`. Renders in `docs/cad/renders/`, templates in `docs/cad/templates/`.
 
 **Almost nothing is fabricated.** The scope is a working station, not a production build:
 
 | Part | How |
 |---|---|
-| Chassis plate | **The actual lid, drilled.** Print `drill` at 1:1, tape it on, centre-punch through. No plate to make. |
-| `cam_mount` | **Print this one.** It holds the fisheye-to-sensor spacing, which is the only dimension that needs accuracy. |
-| Hood | A sheet of aluminium, corrugated plastic, or a second container lid on four standoffs. `hood` is the reference geometry, not a required print. |
-| Gas pod | Any small vented tub with downward holes. `gas_pod` is printable if convenient. |
+| Chassis plate | **The actual lid, with nothing drilled.** Standoffs for Pi and buck are **bonded** to its underside (epoxy or neutral-cure silicone on M2.5 brass standoffs); cable ties go on adhesive mounts. Sheet 4 / `templates/roofbox_lid.svg` give the positions. |
+| `cam_tower` | **Print this one — later.** It holds the fisheye-to-sensor spacing, the only dimension that needs accuracy, and it is the only thing that ever cuts the lid. |
+| Hood | A 198 mm square of aluminium or corrugated plastic on four 20 mm PVC legs standing on the tile — a table over the box. Aperture for the tower. `hood` is the reference geometry. |
+| Gas pod | Any small vented tub, open downward, big enough for two 32 × 20 mm MQ modules side by side. `gas_pod` is printable if convenient. |
 | Radiation shield | **Five inverted ~100 mm plant-pot saucers on a bolt** with spacers. Works genuinely well. `shield` is printable if preferred. |
+| Stand | A 300 mm concrete paving tile. Heavy, flat, off the deck; box and hood legs stand on it, so the whole unit moves as one. |
 
-**Fit is verified, not assumed.** The stack is 80.5 mm tall in 178 mm of interior depth
-(98 mm spare, which is where cable slack and desiccant go), and Pi / buck / camera boss are
-clash-checked in XY — the first two layout drafts had a real overlap that only a numeric
-check caught.
+**Fit is verified numerically, not by eye.** `roofbox_check.py` asserts: no two lid
+footprints overlap; everything inside the ±58 mm usable field; stack 44.5 mm in 178 mm;
+fisheye lip 6 mm proud of the hood; the 110 mm ribbon reaches (~90 mm path); hood legs
+clear the lid; the tower bore is the lid's only through-cut; gland spacing; and it prints
+the cable cut lengths. It has already caught a real overlap, a tie mount outside the field
+and hood legs 2 mm into the lid.
 
 Three dimensions in the file are marked **ASSUMPTION** and read off photographs. Measure
-them before printing `cam_mount`, or it will not fit:
+them before printing `cam_tower`, or it will not fit:
 
 - `FE_RING_D` / `FE_RING_H` — the fisheye's knurled ring, est. Ø23 × 9 mm
 - `FE_BACK` — lens rear to sensor front, est. 3 mm. **This is the one to find by trial**;
-  clip-on fisheyes expect 2–4 mm off a phone lens. Print the seat so it can be shimmed.
+  clip-on fisheyes expect 2–4 mm off a phone lens. Print the ledge shimmable.
 - `BOX_TOP` / `RIM_W` — the container's taper and flange
 
 ---
@@ -825,16 +870,19 @@ Everything not already in the inventory — transcribed in
 | Screw terminal blocks, 2- and 3-way | ~6 blocks | only 2× 3-pin on hand | SLT |
 | Resistors 4.7 kΩ | 10 | 1-Wire + MQ dividers — **the 30 on bill 724 have unconfirmed values (U4)** | SLT |
 | Capacitors 100 nF / 1000 µF | 10 / 2 | decoupling + MQ bulk | SLT |
-| PG7 or PG9 cable glands | 3 | sealed entries — drilled in the box **side wall**, low down, never the lid. Rubber grommet + neutral-cure silicone is an acceptable substitute | hardware shop |
+| PG7 or PG9 cable glands | 3 | sealed entries — drilled in the box **side wall**, low down, never the lid. **PG7 needs a 12.5 mm hole, PG9 15.2 mm** (the *thread*, not the cable). Rubber grommet + neutral-cure silicone is an acceptable substitute | hardware shop |
 | Small weatherproof junction box | 1 | houses the mains adapter **outside** the instrument box | electrical shop |
 | 12 V→5 V 3 A buck module | 1 | if the adapter is >1 m away. First identify the ₨650 "boom/boost module" on bill 745 — it may already be one (U5) | SLT |
 | Neutral-cure silicone | 1 tube | **neutral-cure, not acetoxy** — acetoxy silicone corrodes copper and pins | hardware shop |
-| M2.5 standoffs + screws | 1 set | Pi to sled | SLT |
-| Aluminium or corrugated-plastic sheet ~170 mm sq | 1 | the hood | hardware shop |
+| M2.5 brass standoffs + screws | 1 set | Pi and buck to the lid underside — **bonded**, not bolted through | SLT |
+| Adhesive zip-tie mounts, 19 mm | 4 | cable strain relief on the lid underside, no holes | SLT / hardware |
+| Concrete paving tile, 300 mm | 1 | the stand: box and hood legs sit on it | hardware shop |
+| 15-pin camera FFC, 300–500 mm | 1 | optional — frees the lid-up constraint entirely (§16.1) | online |
+| Aluminium or corrugated-plastic sheet ~200 mm sq | 1 | the hood plate | hardware shop |
 | Plant-pot saucers ~100 mm | 5 | radiation shield plates | any nursery |
 | — | — | *planter not needed: the roof already has planted vases* | — |
 | CR2032 / LIR2032 | 1 | the DS3231's cell is flat | any |
-| 20 mm PVC pipe + clamps | ~1 m | sensor mast | hardware shop |
+| 20 mm PVC pipe + clamps | ~2.5 m | 1.5 m sensor mast + 4 × 220 mm hood legs | hardware shop |
 | Desiccant sachets | 2–3 | condensation inside the vault | any |
 | Epoxy or potting compound | small | pot the soil probe's exposed top | hardware shop |
 
@@ -848,8 +896,9 @@ costs a rooftop trip.
 
 1. **Fix power. Verify `vcgencmd get_throttled` reads `0x0`** and stays there for an hour
    with both MQ heaters running. *Nothing below is meaningful until this passes.*
-2. **Apply the `config.txt` changes** (§11.1–11.3), fit the DS3231 coin cell, `hwclock -w`,
-   reboot, confirm `hwclock -r` reads correct local time and `/dev/rtc0` exists.
+2. **Apply the `config.txt` changes** — `sudo scripts/pi_config.sh` (§11.1–11.3) — fit the
+   DS3231 coin cell, reboot, `sudo hwclock -w`, confirm `hwclock -r` reads correct local
+   time and `/dev/rtc0` exists. `python3 scripts/gate_check.py` checks G2/G3.
 3. **Rework the protoboard** (§9). Keep the soldered MCP3208; cut out the jumper-to-jumper
    chains; add R1–R6, C1, C2; fit the screw terminals. Work from the
    [placement sheet](docs/drawings/perfboard.svg) and the
@@ -862,19 +911,22 @@ costs a rooftop trip.
    `Logged to DB (… rows)` with a `| NULL:` note naming exactly the channels you know are
    disconnected. **That note appearing is the gate**: it is the freshness/plausibility
    gating doing its job, and its absence means you are still running v0.1.
+   `gate_check.py` G6 reads it for you.
 5. **Bring up one sensor at a time on the bench**, HAT on the Pi, running
-   `python3 tests/test_all.py` after each. Order: I2C trio (BMP280 / OLED / DS3231) →
-   MCP3208 + soil → DS18B20 → DHT22 → MQ pair. Adding them one at a time is what makes an
-   intermittent fault attributable.
+   `python3 tests/test_all.py --skip camera` after each (or `--only bmp280,oled,rtc` for
+   the trio). Order: I2C trio (BMP280 / OLED / DS3231) → MCP3208 + soil → DS18B20 → DHT22
+   → MQ pair. Adding them one at a time is what makes an intermittent fault attributable.
 6. **Run 24 h on the bench.** Gate: `sqlite3 ~/hics-data/hics.db "SELECT date(timestamp),
    COUNT(*) FROM telemetry GROUP BY 1"` shows **~1440 rows** for a full day, and
    `get_throttled` is still `0x0`. This directly closes F5 — the station has never yet
    done this.
-7. **Mount on the sled, fit the box, seal the glands.** Silicone needs 24 h to cure.
+7. **Bond the standoffs to the lid** (sheet 4), fit the stack, **drill the three gland
+   holes and the vent in one side wall** (`templates/roofbox_drill_wall.svg`, 1:1), fit
+   the glands, seal. Silicone needs 24 h to cure. The lid itself gets no holes.
 8. **Assemble the mast**, radiation shield and gas pod; wire to the terminals.
 9. **Deploy to the roof.** Box inverted, off the deck, shaded if possible. Drip loops on
    every cable *below* the gland.
-10. **Re-register the station public** on the website only after 48 h of clean data (§10).
+10. **Re-register the station public** on the website only after 48 h of clean data (§15).
 
 ---
 
@@ -905,7 +957,7 @@ should only move when the data is genuinely calibration-grade.
 This is the part worth reading. Everything above is defensible; some of it is only
 defensible *given constraints that a small purchase would remove*.
 
-### 4.1 The camera ribbon is driving the entire enclosure design. Buy a longer one.
+### 16.1 The camera ribbon is driving the entire enclosure design. Buy a longer one.
 The ribbon on hand is **110 mm**. That single fact forced: camera in the lid → lid must
 face up → rain can sit on the gasket → a hood becomes mandatory → glands must move to the
 side wall. **Lid-*down* is strictly better weatherproofing** (every penetration faces the
@@ -914,9 +966,10 @@ then sit 180 mm from the sky-facing end.
 
 **A 300–500 mm 15-pin FFC costs almost nothing.** Buy it, then revisit the orientation
 from scratch. Do not inherit lid-up as though it were a design decision; it is a
-workaround.
+workaround. (The tower of §16.8 makes lid-up *work*; a long ribbon would make it
+*unnecessary*.)
 
-### 4.2 Question the container itself before designing further around it
+### 16.2 Question the container itself before designing further around it
 A food container is a genuinely defensible proof-of-concept housing, and "we built it with
 what we had" is an honest story. But a proper **IP65 ABS junction box** is cheap in
 Kathmandu, arrives with a real gasket, moulded gland bosses and mounting lugs, needs no
@@ -927,7 +980,7 @@ wins on cost or timing, fine — but make it a decision, not a default.
 Related: **five container dimensions in `roofbox.scad` are estimates read off photographs**
 (§5). Measure before printing anything.
 
-### 4.3 The perfboard drawing is deliberately incomplete, and you should finish it differently
+### 16.3 The perfboard drawing is deliberately incomplete, and you should finish it differently
 `perfboard.svg` is a **zoned placement** drawing, not a hole-exact route. That was a
 judgement call: the physical board already has the MCP3208 and its power lines soldered,
 and authoring a hole-by-hole route without that board in hand produces a drawing that is
@@ -937,7 +990,7 @@ wrong in detail *and trusted anyway* — the worst outcome.
 actual occupied holes, and *then* extend `scripts/gen_drawings.py` with the real routing.
 The generator is structured for this — `ZONES` is already data.
 
-### 4.4 Do not build on a sagging rail, and do not trust "it worked before"
+### 16.4 Do not build on a sagging rail, and do not trust "it worked before"
 F1 is live. "It worked fine on the power bank at the AIT pitch" and "the Pi reports
 under-voltage" are **both true simultaneously** — the Pi runs while throttled, and marginal
 peripherals drop off. That *is* F2. Order of attack:
@@ -951,7 +1004,7 @@ peripherals drop off. That *is* F2. Order of attack:
 Then measure with the multimeter you already have: **GPIO pin 2 or 4 (+5 V) to pin 6 (GND)**,
 under load. Below 4.75 V is the fault.
 
-### 4.5 Mains is now going to the roof — keep it out of the instrument box
+### 16.5 Mains is now going to the roof — keep it out of the instrument box
 A wall-socket line is being run up. That settles the topology, but **no 240 V inside a
 plastic food container on a roof.** Adapter in its own small junction box; only low voltage
 crosses the gland. Prefer **12 V + a small buck module** over 5 V if the adapter ends up
@@ -959,7 +1012,7 @@ more than about a metre away — 12 V draws ~2.4× less current for the same pow
 loses far less voltage, and voltage drop *is* F1. Keep the lead-acid UPS **indoors**: heat
 kills lead-acid, and a hot roof is the worst place for it.
 
-### 4.6 What actually earns a render, and what doesn't
+### 16.6 What actually earns a render, and what doesn't
 A 3D render of a food container told us almost nothing we didn't already know — that steer
 was correct. What paid off was the **2D schematic** (it caught nothing, but it is what you
 solder from) and, unexpectedly, the **numeric checks**: an XY clash test caught a real
@@ -970,7 +1023,30 @@ caught a bug in the frozen-register gate that looked right in code review.
 pitch deck, where communication is the actual job, and for verifying that a *mechanism* is
 what you think it is.
 
-### 4.7 Scope honestly: this is a robust DIY build, not a production one
+The second pass confirmed it twice more: the unit test that "caught a bug in the frozen
+gate" had itself enshrined a wrong rule (a steady sensor is not a frozen one — §4), and
+`roofbox_check.py` caught three placement errors that the renders showed and nobody saw.
+And OpenSCAD 2021's *preview* paints cut faces flat over hollows, so 3D section renders
+were quietly lying; the sections are now exact 2D projections instead (§19).
+
+### 16.8 What the audit changed in the enclosure, and why
+Four things in the first CAD draft would have been built wrong:
+
+1. **The hood blinded the camera.** A fisheye flush in the lid under a 32 mm hood with a
+   49 mm aperture sees a ~75° cone. Now a printed **tower** carries the lens up through
+   the hood, 6 mm proud of it.
+2. **Hood legs bolted through the lid at ±65 mm — on the gasket channel.** The hood is
+   now a **free-standing table** on the paving tile; nothing bolts to the lid.
+3. **The lid had ~20 holes, all facing the sky**: hood legs, six zip-tie slots, eight
+   standoff screws. Now: standoffs **bonded**, ties on **adhesive mounts**, and the only
+   penetration is the tower bore — which waits for the camera. **Today the lid is not
+   drilled at all.**
+4. **`GLAND_ID = 7` was the cable size, not the hole.** A PG7 gland needs a **12.5 mm**
+   hole. It would have been drilled at 7.
+5. The fisheye seat was a cup open to the sky — a water trap. The ring now goes in from
+   inside under a 2 mm **lip**, bedded in silicone.
+
+### 16.7 Scope honestly: this is a robust DIY build, not a production one
 The two routed PCBs (`carrier-hat-v1`, `power-mgmt-v1`) and the printed EDU/SCI enclosures
 already exist in `../iesh-production-reference/` and **are** the product. This deployment is
 the working proof that logs real data. Show both at Swiss Week; don't let a render imply the
@@ -983,14 +1059,17 @@ container is the product, or the container imply the renders are vapour.
 | # | Assumption | Where | How to settle it |
 |---|---|---|---|
 | U1 | `BOX_TOP = 130`, `RIM_W = 8`, `RIM_T = 6`, `BOX_WALL = 1.8` | `roofbox.scad` | Calipers. Only base 120 × 120 and height 180 were actually measured |
-| U2 | `FE_RING_D = 23`, `FE_RING_H = 9` — the fisheye's knurled ring | `roofbox.scad` | Calipers, before printing `cam_mount` |
+| U2 | `FE_RING_D = 23`, `FE_RING_H = 9` — the fisheye's knurled ring | `roofbox.scad` | Calipers, before printing `cam_tower` |
 | U3 | `FE_BACK = 3` — fisheye rear to sensor front | `roofbox.scad` | **Trial and error.** Clip-on phone fisheyes expect 2–4 mm off a phone lens. Print the seat shimmable |
 | U4 | The 30 resistors on bill 724 include **4.7 kΩ** | shopping list | Read the bands / measure. R1–R6 all need 4k7 |
 | U5 | The ₨650 "boom/boost module" on bill 745 is a buck/boost converter | shopping list | Look at it. If it is a 12 V→5 V buck, it may serve directly |
 | U6 | DHT22 breakout already carries its own pull-up | schematic R2 | Inspect the module before adding a second |
-| U7 | BMP280 is merely disconnected, not dead | §1 | Reconnect and re-scan `0x76`. **There is no spare** — if dead it needs buying |
+| U7 | BMP280 is merely disconnected, not dead | §2 | Reconnect and re-scan `0x76`. **There is no spare** — if dead it needs buying |
 | U8 | `PSU`/`BUCK` module dimensions in the CAD | `roofbox.scad` | Measure the actual module |
-| U9 | Whether the new firmware behaves correctly on real hardware | §2 | **It has not run yet.** Restart the services and watch the log |
+| U9 | Whether the new firmware behaves correctly on real hardware | §4 | **It has not run yet.** Restart the services and watch the log; `gate_check.py` G6 |
+| U10 | Tower ledge / ribbon fold geometry (`TOWER_IX/IY`, `LIP_T`, ledge width) | `roofbox.scad` | Only meaningful once the camera board and fisheye are in hand. Print one, test-fit, adjust |
+| U11 | The buck module is 25 × 45 × 16 and mounts on M2 standoffs | `roofbox.scad` (U8) | Measure the module on bill 745 (U5) — the lid layout moves if it is bigger |
+| U12 | The container lid accepts bonded standoffs (PP surface) | §12 | Scuff + epoxy on a test patch first; PP is a poor glue surface. Fallback: through-bolt with sealed heads |
 
 ---
 
@@ -1001,9 +1080,9 @@ container is the product, or the container imply the renders are vapour.
    `get_or_create` on `(station, timestamp)`, re-POSTing corrected rows **will not**
    overwrite them. Starting the public series clean looks like the only honest option — but
    it is **destructive and irreversible. Confirm with Pawan before running anything.**
-2. **`git init` the `iesh-production-reference` folder?** See §3.
-3. **Container or IP65 junction box?** See §4.2.
-4. **Buy the longer camera ribbon and redo the orientation?** See §4.1.
+2. **`git init` the `iesh-production-reference` folder?** See §6 — the roofbox CAD no longer depends on it, but the product CAD there is still unversioned.
+3. **Container or IP65 junction box?** See §16.2.
+4. **Buy the longer camera ribbon and redo the orientation?** See §16.1.
 5. **Bump `FIRMWARE_VERSION` past `v0.`?** **No — leave it.** The server flags every `v0.*`
    reading `suspect` deliberately: uncalibrated sensors, an MQ proxy, unverifiable
    timestamps (`hics-docs` G9). It should move only when the data is genuinely
@@ -1026,10 +1105,17 @@ container is the product, or the container imply the renders are vapour.
 - **OpenSCAD's PNG backend ignores alpha**, so a transparent shell renders opaque and hides
   everything. That's why `roofbox.scad` has `exploded` and `section` views rather than one
   transparent assembly.
-- **An `else if` chain in `roofbox.scad` silently falls through to `assembly()`.** Five
-  parts once "compiled fine" while actually rendering the assembly. If you add a part,
-  verify the geometry differs (`md5sum` the STLs).
-- **`quality_flag = 'suspect'` on every reading is correct**, not a bug. See §6.5.
+- **The `else if` chain in `roofbox.scad` used to fall through to `assembly()`** — five
+  parts once "compiled fine" while actually rendering the assembly. It now ends in
+  `assert(false, "unknown part")`, so a typo fails loudly.
+- **OpenSCAD 2021's preview cannot be trusted for section views**: on a nested cut it
+  paints the cut face flat across hollows (verified: the STL volume of the half-tower is
+  exactly half the hollow tower, yet every preview showed it solid). `render.sh` therefore
+  emits sections as exact 2D `projection(cut=true)` SVGs. Trust `roofbox_check.py` over
+  any picture.
+- **STL-exporting the `site` assembly takes minutes** (CGAL on the whole roof). Preview
+  PNGs are seconds. `render.sh` only exports STL for small parts.
+- **`quality_flag = 'suspect'` on every reading is correct**, not a bug. See §18.5.
 
 ---
 
@@ -1051,6 +1137,7 @@ Written down so the Swiss Week material doesn't overstate it.
 ---
 
 *Diagnosis, firmware fixes and drawings: 2026-09-03, from a live session against
-`iesh.local`. Firmware is committed and tested. **The hardware rebuild is not started** —
-the circuit is part-disassembled on the bench and the camera is out, so the station is
-coming apart before it goes back together.*
+`iesh.local`; audited, corrected and extended the same evening (§4 second pass, §16.8).
+Firmware is committed and tested (23 checks). **The hardware rebuild is not started** —
+the circuit is part-disassembled on the bench and the camera is out. Next session starts
+at `docs/README.md`, then §14 step 1 with the multimeter.*
