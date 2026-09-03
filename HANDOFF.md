@@ -1,10 +1,11 @@
 # IESH v0.2 — handoff
 
-> **The single document for this work.** Everything a fresh session or a new person needs in
-> order to redo it in detail. Established **2026-09-03** against the live station at
-> `pawan@iesh.local`. It replaces the earlier split between a handoff and a separate build
-> sheet — two documents that duplicated the fault table and the power section, which is
-> exactly the drift `hics-docs/WORKING-AGREEMENT.md` warns about.
+> **The single document for this work** — everything a fresh session or a new person needs
+> in order to pick it up and redo it in detail. Established **2026-09-03** from a live
+> diagnosis of the station at `pawan@iesh.local`.
+>
+> Read §1 first if you don't know the repos; §3 for what is broken and how we know; §16 for
+> what to question rather than inherit; §14 for what to actually do.
 >
 > **House rule, inherited:** *if this document and reality disagree, this document is the
 > bug.* Sections marked **⚠ UNVERIFIED** were never confirmed — see §16.
