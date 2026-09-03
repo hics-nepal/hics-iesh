@@ -407,9 +407,9 @@ openscad -o drill.svg -D 'part="drill"'    roofbox.scad             # 1:1 drilli
 > uncommitted and unversioned. Decide whether to `git init` it — this session did not, on
 > the grounds that initialising someone's repo uninvited is not a call to make silently.
 >
-> ⚠ `03-enclosure/cad/render_views.py` has a **stale hardcoded path**
-> (`~/Documents/HICS/iesh-production-reference`, missing the `hics-iesh/` segment). It will
-> fail until fixed. Not touched this session.
+> `03-enclosure/cad/render_views.py` used to carry a **stale hardcoded path** (missing the
+> `hics-iesh/` segment). Fixed 2026-09-03 to resolve relative to its own file — but that
+> folder is unversioned, so the fix exists only on disk.
 
 ---
 
