@@ -1,5 +1,13 @@
 # HICS IESH v0.1
 
+> **Institute-level context: `~/Documents/HICS/hics-docs/`** (start at `README.md`; folder
+> map in `HICS-MAP.md`). Two decisions there affect this repo directly: **G9/D28** —
+> installed school stations are calibrated on every channel that can be, with MQ staying a
+> labelled proxy; and **G10** — this repo's `curriculum/` (5 modules, 25+ CDC-aligned
+> activities) is to be *unified* with the learning platform, not duplicated. See
+> `hics-docs/LEARNING-PLATFORM.md` §2–3.
+
+
 **Himalayan Institute for Contextual Sciences — Integrated Environmental Smart Hub**
 
 An offline-capable environmental monitoring station built on Raspberry Pi. Collects live atmospheric, air quality, and soil data; streams it to a web dashboard; and delivers Nepal CDC-aligned science activities for Grades 6–Undergraduate.

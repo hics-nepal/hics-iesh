@@ -9,6 +9,8 @@ Set API_KEY in sensors/config.py with the key printed by manage.py seed_hics.
 import requests
 import socket
 import urllib.parse
+from datetime import datetime, timezone
+
 from data import database as db
 from sensors.config import API_URL, API_KEY, API_NODE_ID, FIRMWARE_VERSION
 
@@ -17,28 +19,59 @@ TIMEOUT    = 15  # seconds
 
 
 def _online():
-    """Quick TCP check before attempting the full POST."""
+    """Quick TCP check before attempting the full POST.
+
+    Uses a context manager: v0.1 leaked one file descriptor per upload cycle
+    (~288/day) because the probe socket was opened and never closed.
+    """
     try:
         parsed = urllib.parse.urlparse(API_URL)
         host = parsed.hostname
         port = parsed.port or (443 if parsed.scheme == 'https' else 80)
-        af   = socket.AF_INET
-        socket.setdefaulttimeout(3)
-        socket.socket(af, socket.SOCK_STREAM).connect((host, port))
-        return True
-    except Exception:
+        with socket.create_connection((host, port), timeout=3):
+            return True
+    except OSError:
         return False
+
+
+def _to_utc_iso(ts):
+    """Normalise a DB timestamp to the UTC ISO-8601 the ingest contract requires.
+
+    The DB stores wall-clock local time (Asia/Kathmandu). v0.1 shipped that
+    naive string straight to the API; Django rescued it by interpreting naive
+    input in settings.TIME_ZONE, so stored instants were in fact correct — but
+    the contract asks for UTC and that rescue is a warned, settings-dependent
+    fallback. Converting here is instant-identical and removes the ambiguity.
+    """
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts)
+    except (TypeError, ValueError):
+        return ts   # pass through unrecognised formats; server counts it as an error
+    if dt.tzinfo is None:
+        dt = dt.astimezone()          # attach the station's local offset
+    return (dt.astimezone(timezone.utc)
+              .isoformat(timespec='microseconds')
+              .replace('+00:00', 'Z'))
+
+
+def _round(v, places):
+    """Round a sensor float, passing None through untouched."""
+    return None if v is None else round(v, places)
 
 
 def _row_to_reading(row: dict) -> dict:
     """Map a DB row to the wire format expected by the ingest API."""
     reading = {
-        'timestamp':        row.get('timestamp'),
-        'temperature_c':    row.get('air_temp'),
-        'humidity_rh':      row.get('air_hum'),
-        'pressure_hpa':     row.get('pressure'),
-        'soil_temp_c':      row.get('soil_temp'),
-        'soil_moisture_pct': row.get('soil_moist'),
+        'timestamp':        _to_utc_iso(row.get('timestamp')),
+        'temperature_c':    _round(row.get('air_temp'), 2),
+        'humidity_rh':      _round(row.get('air_hum'), 2),
+        'pressure_hpa':     _round(row.get('pressure'), 2),
+        'soil_temp_c':      _round(row.get('soil_temp'), 3),
+        # Reported to 2 dp: the capacitive probe's real resolution is nowhere
+        # near the 17 significant figures v0.1 was sending.
+        'soil_moisture_pct': _round(row.get('soil_moist'), 2),
         'firmware_version': FIRMWARE_VERSION,
     }
     module = {}

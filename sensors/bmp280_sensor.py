@@ -23,6 +23,7 @@ class BMP280Sensor:
     def __init__(self):
         self.ok = False
         self.error = None
+        self.last_raw_p = None
         try:
             self._bus = smbus2.SMBus(I2C_BUS)
             self._addr = BMP280_ADDR
@@ -30,13 +31,42 @@ class BMP280Sensor:
             if cid != self.CHIP_ID:
                 raise RuntimeError(f"chip id 0x{cid:02X}, expected 0x58")
             self._read_calibration()
-            # config: standby 500 ms, IIR filter x4 (smooths pressure noise)
-            self._bus.write_byte_data(self._addr, self.REG_CONFIG, 0x88)
-            # ctrl_meas: osrs_t=x2, osrs_p=x16, mode=normal (continuous)
-            self._bus.write_byte_data(self._addr, self.REG_CTRL_MEAS, 0x57)
+            self._configure()
             self.ok = True
         except Exception as e:
             self.error = str(e)
+
+    def _configure(self):
+        """Put the chip in continuous mode. Separated out so reinit() can
+        re-run it after a brownout resets the chip into sleep."""
+        # config: standby 500 ms, IIR filter x4 (smooths pressure noise)
+        self._bus.write_byte_data(self._addr, self.REG_CONFIG, 0x88)
+        # ctrl_meas: osrs_t=x2, osrs_p=x16, mode=normal (continuous)
+        self._bus.write_byte_data(self._addr, self.REG_CTRL_MEAS, 0x57)
+
+    def reinit(self):
+        """Re-open the bus and reconfigure. Called by the core loop when the
+        chip is absent or frozen, so a device that drops off the I2C bus and
+        comes back recovers on its own — v0.1 latched ok=False at init and
+        stayed dead for the whole service lifetime."""
+        try:
+            try:
+                self._bus.close()
+            except Exception:
+                pass
+            self._bus = smbus2.SMBus(I2C_BUS)
+            cid = self._bus.read_byte_data(self._addr, self.REG_ID)
+            if cid != self.CHIP_ID:
+                raise RuntimeError(f"chip id 0x{cid:02X}, expected 0x58")
+            self._read_calibration()
+            self._configure()
+            self.ok = True
+            self.error = None
+            return True
+        except Exception as e:
+            self.ok = False
+            self.error = str(e)
+            return False
 
     def _read_calibration(self):
         raw = bytes(self._bus.read_i2c_block_data(self._addr, self.REG_CALIB, 24))
@@ -47,18 +77,22 @@ class BMP280Sensor:
             '<HhhHhhhhhhhh', raw)
 
     def read(self):
-        """Returns (temperature_C, pressure_hPa) or (None, None) on failure."""
+        """Returns (temperature_C, pressure_hPa) or (None, None) on failure.
+
+        `last_raw_p` holds the uncompensated pressure word from this read, for
+        the caller's frozen-register check (see sensors/health.Channel).
+        """
         if not self.ok:
             return None, None
         try:
             d = self._bus.read_i2c_block_data(self._addr, self.REG_DATA, 6)
             raw_p = (d[0] << 12) | (d[1] << 4) | (d[2] >> 4)
             raw_t = (d[3] << 12) | (d[4] << 4) | (d[5] >> 4)
+            self.last_raw_p = raw_p
             if raw_t in (0, 0x80000, 0xFFFFF):
                 # Skip value = chip reset to sleep mode (undervoltage brownout
                 # does this). Re-arm continuous mode; next read will be live.
-                self._bus.write_byte_data(self._addr, self.REG_CONFIG, 0x88)
-                self._bus.write_byte_data(self._addr, self.REG_CTRL_MEAS, 0x57)
+                self._configure()
                 return None, None
 
             # Bosch datasheet float compensation
@@ -83,5 +117,7 @@ class BMP280Sensor:
             p = p + (var1 + var2 + self._P7) / 16.0
             return temp, p / 100.0
         except Exception as e:
+            # Bus error mid-read: mark down so the core loop calls reinit().
             self.error = str(e)
+            self.ok = False
             return None, None

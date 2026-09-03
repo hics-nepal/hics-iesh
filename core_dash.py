@@ -28,10 +28,21 @@ from sensors.config import (
 import data.database as db
 from data.uploader import upload_unsynced
 from sensors import air_quality as aq
+from sensors import health
 
 SCREENS = 6
 # Seconds each screen stays visible before cycling to the next.
 SCREEN_DURATIONS = [10, 8, 8, 8, 10, 6]
+
+# DB column order — must match data.database.log()'s signature.
+CHANNELS = ('air_temp', 'air_hum', 'soil_temp', 'soil_moist',
+            'pressure', 'mq7_raw', 'mq135_raw')
+
+# How often to retry a sensor that is currently down. The I2C/1-Wire parts on
+# this station drop off their bus under undervoltage and come back; v0.1
+# latched ok=False at init, so one dropout killed a channel until the service
+# was restarted by hand.
+RECOVER_SECS = 60
 
 
 def pressure_to_altitude(pressure_hpa):
@@ -106,6 +117,15 @@ for name, sensor in [("DHT22", dht), ("BMP280", bmp), ("DS18B20", ds18),
 db.init()
 
 # ── State ─────────────────────────────────────────────────────────────────────
+# Every logged quantity goes through a health.Channel, which returns None to the
+# logger unless the reading is both fresh and physically plausible. v0.1 kept
+# these as plain floats initialised to 0.0 and overwrote them only on success,
+# so a dead sensor logged 0.0 (or its last good value) forever — 441 rows of
+# soil_temp 0.0, 15 of the DS18B20's 85.0 reset sentinel, and 416 rows of
+# bit-identical frozen pressure reached the website that way.
+ch = health.ChannelSet(CHANNELS)
+
+# Display mirrors of the gated channels, refreshed each loop from `ch`.
 air_t      = 0.0
 air_h      = 0.0
 pressure   = 0.0
@@ -115,6 +135,7 @@ soil_moist = 0.0
 mq7_raw    = 0
 mq135_raw  = 0
 db_rows    = db.count()
+last_recover = 0.0
 
 screen        = 0
 last_screen   = 0.0
@@ -137,34 +158,57 @@ try:
 
         # ── Read sensors (non-blocking DHT: 1 attempt, no sleep) ─────────────
         bmp_t, bmp_p = bmp.read()
-        if bmp_p:
-            pressure = bmp_p
-            altitude = pressure_to_altitude(pressure)
-        # BMP280 also gives temperature — use it as fallback when DHT22 hasn't
-        # produced a valid reading yet (air_t still 0.0) or is failing.
-        if bmp_t is not None and (air_t == 0.0 or not dht.ok):
-            air_t = round(bmp_t, 1)
-            # Note: BMP280 has no humidity sensor — leave air_h as last DHT value
+        # Pass the uncompensated pressure word so the channel can spot a frozen
+        # register: a chip that browned out into sleep keeps returning a
+        # perfectly plausible — but bit-identical — number.
+        ch.update('pressure', bmp_p, raw=bmp.last_raw_p)
+        # BMP280 also gives temperature — fallback when DHT22 has no fresh
+        # reading. Keyed on channel freshness, not on air_t == 0.0, which
+        # misfired at exactly 0 C.
+        if bmp_t is not None and not ch['air_temp'].fresh:
+            ch.update('air_temp', round(bmp_t, 1))
+            # Note: BMP280 has no humidity sensor — air_hum simply ages out.
 
-        soil_moist = adc.read_soil_pct()
-        mq7_raw    = adc.read_raw(CH_MQ7)
-        mq135_raw  = adc.read_raw(CH_MQ135)
+        ch.update('soil_moist', adc.read_soil_pct())
+        ch.update('mq7_raw',   adc.read_raw(CH_MQ7))
+        ch.update('mq135_raw', adc.read_raw(CH_MQ135))
 
         # Proxy AQI (None until scripts/calibrate_mq.py has been run)
         if now - last_aqi >= 10:
             last_aqi = now
             aqi_info = aq.proxy_aqi(adc.read_mq_rs(CH_MQ7),
                                     adc.read_mq_rs(CH_MQ135))
-        _ds = ds18.read()
-        if _ds is not None:
-            soil_temp = _ds
+        ch.update('soil_temp', ds18.read())
 
         # DHT22 requires >= 2 s between reads — poll every 3 s, not every loop
         if now - last_dht >= 3:
             last_dht = now
             new_t, new_h = dht.read(retries=1, delay=0)
-            if new_t is not None:
-                air_t, air_h = new_t, new_h
+            ch.update('air_temp', new_t)
+            ch.update('air_hum',  new_h)
+
+        # ── Recover downed sensors (every RECOVER_SECS) ───────────────────────
+        if now - last_recover >= RECOVER_SECS:
+            last_recover = now
+            if not bmp.ok:
+                bmp.reinit()
+            if not oled.ok:
+                oled.reinit()
+            # DS18B20 rescans the 1-Wire bus inside read(); MCP3208 is SPI and
+            # has no addressing to lose.
+
+        # ── Refresh display mirrors from the gated channels ───────────────────
+        air_t      = ch['air_temp'].for_display()
+        air_h      = ch['air_hum'].for_display()
+        soil_temp  = ch['soil_temp'].for_display()
+        soil_moist = ch['soil_moist'].for_display()
+        mq7_raw    = int(ch['mq7_raw'].for_display(0))
+        mq135_raw  = int(ch['mq135_raw'].for_display(0))
+        _p         = ch['pressure'].for_log()
+        # Altitude is meaningless without a real pressure — v0.1 fed 0.0 hPa
+        # into the barometric formula and displayed 44330 m.
+        pressure   = _p if _p is not None else 0.0
+        altitude   = pressure_to_altitude(_p) if _p else 0.0
 
 
         # ── WiFi check (every 60 s) ───────────────────────────────────────────
@@ -264,18 +308,27 @@ try:
                     draw.text((0,  0), f"SYSTEM  {ts}", fill="white")
                     draw.text((0, 14), date_s, fill="white")
                     draw.text((0, 28), f"{net_s}  Up:{up_s}", fill="white")
-                    draw.text((0, 42), f"DB: {db_rows} rows", fill="white")
+                    bad = ch.unhealthy()
+                    if bad:
+                        # Name the failing channels: a silent dead sensor is how
+                        # v0.1 logged 46% garbage without anyone noticing.
+                        draw.text((0, 42), "BAD:" + ",".join(sorted(bad))[:20],
+                                  fill="white")
+                    else:
+                        draw.text((0, 42), f"DB: {db_rows} rows  OK", fill="white")
 
                 # ── Shared chrome: page indicator top-right ──────────────────
                 draw.text((110, 0), f"{screen + 1}/{SCREENS}", fill="white")
 
         # ── Log to SQLite ─────────────────────────────────────────────────────
         if now - last_db > DB_LOG_SECS:
-            db.log(air_t, air_h, soil_temp, soil_moist, pressure,
-                   mq7_raw, mq135_raw)
+            db.log(*ch.row(CHANNELS))
             db_rows = db.count()
             trend   = _compute_trend()
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Logged to DB ({db_rows} rows)")
+            stamp   = datetime.now().strftime('%H:%M:%S')
+            bad     = ch.unhealthy()
+            note    = f" | NULL: {ch.summary()}" if bad else ""
+            print(f"[{stamp}] Logged to DB ({db_rows} rows){note}")
             last_db = now
 
         # ── Upload to API (when internet available) ───────────────────────────

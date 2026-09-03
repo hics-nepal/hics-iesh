@@ -152,6 +152,25 @@ class OLED:
         except Exception as e:
             self.error = str(e)
 
+    def reinit(self):
+        """Re-open the panel after an I2C dropout, so a display that vanished
+        (loose SDA/SCL, brownout) comes back without a service restart."""
+        try:
+            if self.device:
+                try:
+                    self.device.cleanup()
+                except Exception:
+                    pass
+            self.device = _OLEDDevice(I2C_BUS, OLED_ADDR, OLED_WIDTH, OLED_HEIGHT)
+            self.ok = True
+            self.error = None
+            return True
+        except Exception as e:
+            self.device = None
+            self.ok = False
+            self.error = str(e)
+            return False
+
     def canvas(self):
         """Context manager — use as: with oled.canvas() as draw: ..."""
         return _Canvas(self.device)
