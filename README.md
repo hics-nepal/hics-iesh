@@ -8,6 +8,14 @@
 > `hics-docs/LEARNING-PLATFORM.md` §2–3.
 
 
+> **⚠ Deploying or debugging a station? Read [`HANDOFF.md`](HANDOFF.md) first.**
+> A live diagnosis on 2026-09-03 found the station had never logged a usable day of data:
+> a continuous 5 V undervoltage, sensors dropping off their buses, and firmware that logged
+> a dead sensor's last value forever (~46 % of the soil column was garbage that reached the
+> website). The firmware is fixed; the hardware rebuild is not started. `HANDOFF.md` has the
+> state, [`LALITPUR-DEPLOYMENT.md`](LALITPUR-DEPLOYMENT.md) has the build sheet, and
+> `docs/drawings/` has the schematic and perfboard layout.
+
 **Himalayan Institute for Contextual Sciences — Integrated Environmental Smart Hub**
 
 An offline-capable environmental monitoring station built on Raspberry Pi. Collects live atmospheric, air quality, and soil data; streams it to a web dashboard; and delivers Nepal CDC-aligned science activities for Grades 6–Undergraduate.

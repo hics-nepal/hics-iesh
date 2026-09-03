@@ -7,6 +7,10 @@
 > `../iesh-production-reference/` remain the product end state and are **not** replaced
 > by anything here.
 >
+> **Start at [`HANDOFF.md`](HANDOFF.md)** if you are picking this up cold — it carries the
+> current state of the hardware, what is unverified, the open decisions, and a rethink of
+> the approach. This file is the *build sheet*: what to do with your hands.
+>
 > Institute context: `~/Documents/HICS/hics-docs/`. Productisation truth:
 > `../iesh-production-reference/` (decisions D1–D29). This file is the truth for
 > **this deployment only** — the physical build, what goes where, and how we know it works.
