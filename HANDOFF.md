@@ -116,6 +116,106 @@ openscad -o drill.svg -D 'part="drill"'    roofbox.scad             # 1:1 drilli
 
 ---
 
+## 3b. Reference photographs and the parts inventory
+
+### Photographs
+In `docs/reference-photos/` (1400 px, ~850 KB total) so the docs don't depend on paths
+outside the repo. **Several assumptions in §5 were read off these images — which is exactly
+why they need calipers.**
+
+**[`01-circuit-as-built-cardboard.jpg`](docs/reference-photos/01-circuit-as-built-cardboard.jpg)
+— fault F2, visually.** The cardboard build as taken to the AIT selection pitch: dupont
+plugged into dupont, joints held with masking-tape flags, no strain relief anywhere, sensor
+boards hanging off unsupported leads. The black power bank at left was the original supply
+(F1). This is the thing being replaced.
+
+**[`02-container-exterior.jpg`](docs/reference-photos/02-container-exterior.jpg) — the found
+enclosure.** *Measured: **120 × 120 mm base, 180 mm tall**, excluding the rim.* The taper,
+rim width and wall thickness in `roofbox.scad` were **estimated from this image** — U1.
+
+**[`03-container-interior-gasket.jpg`](docs/reference-photos/03-container-interior-gasket.jpg)
+— the red silicone gasket** in the lid channel. This is the reason the container is usable
+at all, and the reason the lid is the chassis plate. The lid seats on a moulded rim, not on
+the wall edge.
+
+**[`04-camera-and-clipon-fisheye.jpg`](docs/reference-photos/04-camera-and-clipon-fisheye.jpg)
+— the constraint that shaped the enclosure.** OV5647 "Raspberry Pi Camera Rev 1.3", board
+**25 × 24 mm**, with its ribbon at **~110 mm — and that is what forces lid-up (§4.1)**.
+Also the clip-on phone fisheye: a knurled-ring lens element on a hinged clip, which is what
+`cam_mount` seats. `FE_RING_D`, `FE_RING_H` and `FE_BACK` (U2, U3) were all guessed from
+this photo.
+
+### Dimensions on record
+
+| Item | Dimension | Source |
+|---|---|---|
+| Container body | **120 × 120 mm base, 180 mm tall** (excl. rim) | measured |
+| Container taper / rim / wall | top ≈130 mm, rim ≈8 mm, wall ≈1.8 mm | **estimated — U1** |
+| Camera board (OV5647 Rev 1.3) | 25 × 24 mm, M2 holes on a 12.5 mm grid | datasheet + photo |
+| Camera ribbon | **≈110 mm** | measured |
+| Fisheye knurled ring | ≈Ø23 × 9 mm | **estimated — U2** |
+| Fisheye back-focal gap | ≈3 mm | **guess, needs trial — U3** |
+| Raspberry Pi 3B+ | 85 × 56 mm, M2.5 on a 58 × 49 grid, ports 17 mm tall | datasheet |
+| Protoboard target | 65 × 70 mm = 25 × 27 holes @ 2.54 mm | `carrier-hat-v1` footprint |
+| Verified stack height | **80.5 mm in 178 mm** interior depth (98 mm spare) | computed |
+
+### Parts inventory — transcribed from the two supplier bills
+Supplier: **Supreme Light Technology Pvt. Ltd.**, Sanepa-2, Lalitpur · 9860563506 ·
+sitech.com.np. Bill images are deliberately not committed; this transcription is the record.
+
+**Bill 724 — 22 May 2026 — ₨7,095**
+
+| Item | Qty | Rate | Item | Qty | Rate |
+|---|---|---|---|---|---|
+| DHT22 | 2 | 550 | LED | 5 | 2 |
+| BMP280 | 1 | 350 | Resistors | 30 | 1 |
+| Raindrop sensor | 2 | 250 | LDR | 4 | 15 |
+| Soil moisture sensor | 1 | 165 | Multimeter + battery | 1 | 475 |
+| Jumper wires | 2 sets | 150 | PIR sensor | 1 | 200 |
+| MQ-7 | 2 | 370 | RTC module | 1 | 350 |
+| MQ-135 | 2 | 300 | Matrix board 10×15 cm | 2 | 85 |
+| OLED 1.3" | 1 | 750 | Matrix board 5×7 cm | 2 | 25 |
+| TP4056 | 1 | 90 | 3.7 V Li-ion | 2 | 180 |
+| MCP3208 | 1 | 625 | Li battery holder | 1 | 150 |
+
+**Bill 745 — ~7 Jun 2026 — ₨3,885**
+
+| Item | Qty | Rate | Item | Qty | Rate |
+|---|---|---|---|---|---|
+| Waterproof ultrasonic sensor | 1 | 950 | 2-channel relay | 2 | 250 |
+| Ultrasonic sensor | 1 | 165 | Terminal block, 3-pin | 2 | 15 |
+| Heatshrink tube 6 mm | 2 m | 30 | Raspberry Pi camera | 1 | 900 |
+| Crocodile clips | 5 sets | 30 | Switch | 10 | 30 |
+| Mic module | 1 | 150 | Buzzer | 1 | 30 |
+| "Boom/boost module" | 1 | 650 | | | |
+
+**What the inventory changes:**
+- **Spares exist** for MQ-7, MQ-135 and DHT22 — a suspect part can be swapped rather than
+  debugged. There is **no spare BMP280** (U7).
+- **Two 10 × 15 cm matrix boards** — cut one to 65 × 70 mm and a whole spare remains.
+- **A multimeter is on hand**, so F1 can be settled by measurement, not inference.
+- **Only 2× 3-pin terminals** — about 16 ways are needed. On the shopping list.
+- **Unused and worth fitting:** raindrop ×2 (CH3 free), LDR ×4 (CH4 free).
+- **Unused, no role here:** PIR, mic, buzzer, relays, switches. The *waterproof ultrasonic*
+  is interesting later as a **snow-depth or water-level** channel — a Himalayan-transect
+  story, not a Lalitpur-rooftop one.
+- ⚠ **U4:** "Resistors ×30" does not say the values. R1–R6 all need **4k7**.
+- ⚠ **U5:** the ₨650 "boom/boost module" is unidentified. If it is a 12 V→5 V buck it may
+  serve the power design directly (§4.5).
+
+### Generated drawings and renders
+
+| Sheet | Path |
+|---|---|
+| Wiring schematic | [`docs/drawings/schematic.svg`](docs/drawings/schematic.svg) |
+| Perfboard placement | [`docs/drawings/perfboard.svg`](docs/drawings/perfboard.svg) |
+| Box exploded view | `../iesh-production-reference/03-enclosure/cad/_roofbox/exploded.png` |
+| Box section view | `../iesh-production-reference/03-enclosure/cad/_roofbox/section.png` |
+| Camera mount | `../iesh-production-reference/03-enclosure/cad/_roofbox/cam_mount.png` |
+| Lid drilling template (1:1) | `../iesh-production-reference/03-enclosure/cad/_roofbox/roofbox_drill.svg` |
+
+---
+
 ## 4. The rethink — what to question rather than inherit
 
 This is the part worth reading. Everything above is defensible; some of it is only

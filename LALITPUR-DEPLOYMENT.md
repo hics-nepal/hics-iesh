@@ -1,5 +1,13 @@
 # IESH v0.2 — Lalitpur rooftop deployment
 
+> **Photos:** [as-built circuit](docs/reference-photos/01-circuit-as-built-cardboard.jpg) ·
+> [container](docs/reference-photos/02-container-exterior.jpg) ·
+> [lid gasket](docs/reference-photos/03-container-interior-gasket.jpg) ·
+> [camera + fisheye](docs/reference-photos/04-camera-and-clipon-fisheye.jpg)
+>
+> **Drawings:** [wiring schematic](docs/drawings/schematic.svg) ·
+> [perfboard placement](docs/drawings/perfboard.svg)
+>
 > **Scope.** Take the station from the cardboard bench prototype to a rooftop unit in
 > Kumaripati, Lalitpur that logs real, trustworthy data to himalayansciences.org
 > continuously. Interim housing is a 120 × 120 × 180 mm gasketed food container; the
@@ -40,7 +48,7 @@ undo the fixes.
 | # | Fault | Evidence |
 |---|---|---|
 | **F1** | **Undervoltage, continuously** | `vcgencmd get_throttled` = `0x50005` → *under-voltage NOW · currently THROTTLED*. `dmesg`: `hwmon2: Undervoltage detected!`. Present on the power bank **and** on the replacement plug adapter, both measured on a 2-minute-old boot — so it is not stale history. Pi **3B+** wants a solid 5 V/2.5 A. |
-| **F2** | **Sensors drop off their buses and come back** | BMP280 `[Errno 121]`, OLED `[Errno 5]`, DS18B20 absent from `/sys/bus/w1/devices/` then present as `28-062261761e24` minutes later. Downstream of F1, and of ~40 dupont crimp + friction joints. |
+| **F2** | **Sensors drop off their buses and come back** — [see the as-built photo](docs/reference-photos/01-circuit-as-built-cardboard.jpg) | BMP280 `[Errno 121]`, OLED `[Errno 5]`, DS18B20 absent from `/sys/bus/w1/devices/` then present as `28-062261761e24` minutes later. Downstream of F1, and of ~40 dupont crimp + friction joints. |
 | **F3** | **A dead sensor logged its last value forever** | v0.1 initialised every reading to `0.0` and overwrote only on success. Measured in the station DB: `soil_temp` = **441 rows of 0.0** + **15 rows of 85.0** (the DS18B20 power-on-reset sentinel); `pressure` = **416 rows frozen at 800.647395954495** (bit-identical to 12 dp) + 26 rows of 0.0, against only **5** plausible rows. ~46 % of the soil column was garbage indistinguishable from data. |
 | **F4** | **No working clock** | No `dtoverlay=i2c-rtc,ds3231`, so `/dev/rtc0` does not exist and the OS never reads the DS3231. The chip itself reads **2000-01-05** — coin cell dead or never set. Boot time came from systemd's saved clock, which is why services claimed "started Jun 13" on a 14-minute uptime. Every power cut mints rows with a wrong timestamp, and the server dedups on `(station, timestamp)` — so bad timestamps are **permanent**. |
 | **F5** | **Never ran a full day** | Rows/day: Jun 11 → 598, Jun 12 → 35, Jun 13 → 101, Sep 3 → 26. A full day is 1440. There is no time series to speak of. |
@@ -78,7 +86,7 @@ So the unit is three physically separate things, not one box:
 ```
 
 **Orientation is forced by the camera ribbon, not chosen.** The ribbon on hand is
-**110 mm**. An all-sky camera must look up, and the Pi must be within a ribbon's length
+**110 mm** ([photo](docs/reference-photos/04-camera-and-clipon-fisheye.jpg)). An all-sky camera must look up, and the Pi must be within a ribbon's length
 of it — so the camera sits in the lid with the Pi bolted directly beneath. Mounting the
 box inverted (lid down) would put the Pi 180 mm from the sky-facing end and the ribbon
 would not reach. A 300–500 mm FFC would free the choice; with this one, **lid up** is the
@@ -93,7 +101,7 @@ the heat straight in.
 **Cable glands move off the lid into the box side wall, low down**, so nothing faces the
 sky. Drip loops below each.
 
-**The fisheye lens is the window.** It's a clip-on phone lens: the element with its
+**The fisheye lens is the window.** It's a [clip-on phone lens](docs/reference-photos/04-camera-and-clipon-fisheye.jpg): the element with its
 knurled ring unscrews from the clip arm, and that ring beds into a sealed boss in the lid.
 This is better than cutting an acrylic window — the camera isn't also shooting through an
 extra sheet that would add reflections and haze. Vignetting into a circular image is
@@ -512,7 +520,8 @@ them before printing `cam_mount`, or it will not fit:
 
 ## 8. Shopping list
 
-Everything not already on bills 724/745.
+Everything not already in the inventory — transcribed in
+[`HANDOFF.md` §3b](HANDOFF.md#3b-reference-photographs-and-the-parts-inventory).
 
 | Item | Qty | Why | Where |
 |---|---|---|---|
@@ -520,11 +529,11 @@ Everything not already on bills 724/745.
 | 5 V / 3 A supply | 1 | if the cable alone doesn't clear the flag. Lives in the junction box, not the vault | Supreme Light Technology, Sanepa-2 |
 | Hook-up wire, 22 AWG stranded, 3–4 colours | 1 spool ea | you have jumper sets but no bulk wire | SLT |
 | Screw terminal blocks, 2- and 3-way | ~6 blocks | only 2× 3-pin on hand | SLT |
-| Resistors 4.7 kΩ | 10 | 1-Wire + MQ dividers — **confirm you have this value among the 30** | SLT |
+| Resistors 4.7 kΩ | 10 | 1-Wire + MQ dividers — **the 30 on bill 724 have unconfirmed values (U4)** | SLT |
 | Capacitors 100 nF / 1000 µF | 10 / 2 | decoupling + MQ bulk | SLT |
 | PG7 or PG9 cable glands | 3 | sealed entries — drilled in the box **side wall**, low down, never the lid. Rubber grommet + neutral-cure silicone is an acceptable substitute | hardware shop |
 | Small weatherproof junction box | 1 | houses the mains adapter **outside** the instrument box | electrical shop |
-| 12 V→5 V 3 A buck module | 1 | if the adapter is >1 m away. Check whether the ₨650 "boom/boost module" on bill 745 already is one | SLT |
+| 12 V→5 V 3 A buck module | 1 | if the adapter is >1 m away. First identify the ₨650 "boom/boost module" on bill 745 — it may already be one (U5) | SLT |
 | Neutral-cure silicone | 1 tube | **neutral-cure, not acetoxy** — acetoxy silicone corrodes copper and pins | hardware shop |
 | M2.5 standoffs + screws | 1 set | Pi to sled | SLT |
 | Aluminium or corrugated-plastic sheet ~170 mm sq | 1 | the hood | hardware shop |
