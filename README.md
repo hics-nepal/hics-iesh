@@ -13,8 +13,9 @@
 > a continuous 5 V undervoltage, sensors dropping off their buses, and firmware that logged
 > a dead sensor's last value forever (~46 % of the soil column was garbage that reached the
 > website). The firmware is fixed; the hardware rebuild is not started. `HANDOFF.md` has the
-> state, [`LALITPUR-DEPLOYMENT.md`](LALITPUR-DEPLOYMENT.md) has the build sheet, and
-> `docs/drawings/` has the schematic and perfboard layout.
+> **[`HANDOFF.md`](HANDOFF.md) is the single document for that work** — the faults with their
+> evidence, the repos and where truth lives, the rebuild, and what is still unverified.
+> `docs/drawings/` has the wiring schematic and perfboard layout.
 
 **Himalayan Institute for Contextual Sciences — Integrated Environmental Smart Hub**
 
