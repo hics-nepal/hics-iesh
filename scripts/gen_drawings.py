@@ -381,62 +381,115 @@ def schematic():
 # ════════════════════════════════════════════════════════════════════════════
 #  SHEET 2 — perfboard placement
 # ════════════════════════════════════════════════════════════════════════════
-# HONEST SCOPE: this is a ZONED PLACEMENT drawing, not a hole-exact routing
-# diagram. The real board already has the MCP3208 and its power lines soldered,
-# and authoring a hole-by-hole route without that board in hand would produce a
-# drawing that is wrong in detail and trusted anyway. What is fixed here is what
-# matters and can be known: which functional block sits where, which edge the
-# terminals are on, and the separation rules. Count holes off the printed grid.
-HOLES_X, HOLES_Y = 25, 27          # 65 x 70 mm at 2.54 mm pitch
+# HONEST SCOPE: a ZONED PLACEMENT drawing for the BLANK 100 x 150 mm board, not
+# a hole-exact route. What is fixed and knowable is what matters: which block
+# sits where, which edge the terminals are on, the separation rules and the
+# order of work. Count holes off the printed grid; adjust by a hole or two to
+# suit your own board without asking.
+#
+# Board: PY-10CM*15CM phenolic matrix board, nominally 57 x 37 holes at 2.54 mm.
+# COUNT YOUR OWN before committing - vendors vary by a hole or two at the edges.
+#
+# The old demo board is NOT reworked: bill 884 bought a second MCP3208, so that
+# board is set aside intact and everything below is built fresh.
+HOLES_X, HOLES_Y = 57, 37          # 145 x 94 mm of grid on a 100 x 150 board
 PITCH_MM = 2.54
 
 ZONES = [
     # (col0, row0, cols, rows, label, sub, colour)
-    (2,  0,  20, 2,  '2x20 FEMALE HEADER  ->  Pi GPIO', 'SOLDER ON THE UNDERSIDE - it seats down onto the Pi', '#37474f'),
-    (1,  3,  23, 2,  'POWER BUSES   +5 V / +3.3 V / GND', 'three continuous rails, each tied to two Pi GND/supply pins', RAIL5),
-    (2,  6,  10, 8,  'MCP3208  DIP-16', 'ALREADY SOLDERED - keep it, do not redo', SPI),
-    (13, 6,  10, 8,  'MQ DIVIDERS  R3-R6  +  C2 1000uF', 'analogue: keep at the opposite end from the DHT/I2C lines', SIG),
-    (2,  15, 21, 3,  'I2C BREAKOUT  -  BMP280 / DS3231 / OLED', 'shortest possible run; route SDA+SCL side by side with a GND between', I2C),
-    (2,  19, 8,  2,  'R1 / R2  4k7 PULL-UPS', '1-Wire + DHT22', RAIL3),
-    (12, 19, 11, 2,  'C1 100nF', 'decoupling, right at the ADC', MUTE),
-    (1,  22, 23, 4,  'SCREW TERMINALS   14 ways', 'MAST 8  -  SOIL 4  -  POWER 2      label every way in indelible pen', ACC),
+    (2,  0,  20, 2,
+     '2 x  1x20 FEMALE HEADER STRIPS   ->  Pi GPIO',
+     'BODIES ON THE UNDERSIDE, tails soldered on top - it seats DOWN onto the Pi.   '
+     'upper row = Pi ODD pins 1-39,  lower row = Pi EVEN pins 2-40.   MARK PIN 1.',
+     '#37474f'),
+
+    (1,  4,  55, 1,
+     'GND RAIL          flood one continuous strip  -  tie to at least TWO Pi GND pins '
+     '(6, 9, 14, 20, 25, 30, 34, 39)', '', GND),
+    (1,  6,  55, 1,
+     '+3.3 V RAIL       from Pi pins 1 and 17  -  MCP3208 VDD+VREF, I2C trio, pull-ups, '
+     'DHT22, soil, raindrop', '', RAIL3),
+    (1,  8,  55, 1,
+     '+5 V RAIL         from the POWER terminal via the LM2596 @ 5.00 V  -  MQ HEATERS ONLY.  '
+     'do NOT wire this rail to Pi pins 2/4', '', RAIL5),
+
+    # ---- analogue end (left) ----
+    (3,  11, 10, 9,
+     'MCP3208   DIP-16',
+     'pin 1 top-left.   16->3V3 VDD   15->3V3 VREF   14+9->GND   '
+     '13->pin23 CLK   12->pin21 Dout   11->pin19 Din   10->pin24 CS',
+     SPI),
+    (15, 11, 6,  2,
+     'C1  100 nF', 'across the ADC supply pins, as close as it will go', MUTE),
+    (3,  22, 17, 4,
+     'MQ DIVIDERS   R3 R4  (MQ-7 -> CH0)    R5 R6  (MQ-135 -> CH1)',
+     'AOUT -> node -> GND, node -> CHx.   USE MATCHED PAIRS and put the measured '
+     '(R1+R2)/R2 into sensors/config.py:26', SIG),
+    (22, 22, 7,  3,
+     'C2  1000 uF', 'on the 5 V rail beside the MQ feed.   WATCH POLARITY', MUTE),
+
+    # ---- digital end (right) ----
+    (32, 11, 21, 4,
+     'I2C BREAKOUT   BMP280 0x76  ·  OLED 0x3C  ·  DS3231 0x68',
+     'shortest run on the board.   route SDA and SCL side by side with a GND between them.   '
+     'do NOT add pull-ups - the Pi 3B+ already has 1k8', I2C),
+    (32, 17, 9,  2,
+     'R1  4k7', '1-WIRE pull-up:  GPIO4 (pin 7) -> 3V3', RAIL3),
+    (43, 17, 10, 2,
+     'R2  4k7', 'DHT22 pull-up: GPIO23 (pin 16) -> 3V3.  CHECK the module first - U6', RAIL3),
+    (32, 22, 21, 3,
+     'FREE ADC CHANNELS   CH3  CH4  CH5  CH6  CH7',
+     'raindrop x2 and LDR x4 are owned and unfitted - leave room, fit after gate 6', MUTE),
+
+    # ---- terminals along the bottom edge ----
+    (1,  29, 55, 5,
+     'SCREW TERMINALS   14 ways   -   MAST 8   |   SOIL 4   |   POWER 2',
+     'cables leave the board at this edge, nearest the glands.   '
+     'LABEL EVERY WAY ON THE BOARD IN INDELIBLE PEN', ACC),
 ]
 
 RULES = [
     ('Analogue apart from digital',
-     'MCP3208 and the MQ dividers at one end; DHT22 and I2C at the other. A switching MQ heater beside an ADC input is a measurable error.'),
+     'MCP3208 and the MQ dividers on the left; I2C and the DHT22 pull-up on the right. A switching MQ heater beside an ADC input is a measurable error, not a theoretical one.'),
     ('One continuous ground',
-     'Bond every ground pad into a single strip and tie it to at least TWO Pi GND pins. A thin shared return is a classic cause of fault F2.'),
+     'Flood the GND row into a single strip and tie it to at least TWO Pi GND pins. A thin shared return is a classic cause of fault F2.'),
     ('I2C as short as physically possible',
      'Plus 100 kHz instead of 400 kHz in config.txt. Do NOT add pull-ups - the Pi 3B+ already has 1k8 on GPIO2/GPIO3.'),
-    ('Continuity-check before fitting any IC',
-     'Do the header, ground strip and supply rails first, then buzz every net with the multimeter. A shorted rail on a soldered board is far less forgiving than on a breadboard.'),
+    ('Rails before components, and buzz them',
+     'Header, ground strip and supply rails first. Then meter GND/3V3/5V against each other - ALL THREE MUST READ OPEN - before the board ever meets the Pi.'),
     ('Label every terminal on the board itself',
-     'The masking-tape flags on the cardboard build are the reason a rebuild was needed.'),
+     'The masking-tape flags on the demo build are the reason a rebuild was needed at all.'),
+    ('Iron under three seconds per pad',
+     'Cheap phenolic board lifts pads if you dwell. ~350 C, in and out.'),
 ]
 
 
 def perfboard():
-    W, H = 1620, 1120
+    W, H = 1860, 1040
     o = header_block(W, 'Perfboard placement',
-                     '65 x 70 mm matrix board, 25 x 27 holes at 2.54 mm.   '
-                     'Zoned placement and separation rules - not a hole-exact route.')
+                     'BLANK PY-10CM*15CM board, 57 x 37 holes at 2.54 mm.   '
+                     'Zoned placement, separation rules and order of work - not a hole-exact route.')
 
     # ---- the hole grid, drawn to scale ----
-    S = 21.0                                    # px per hole
-    gx, gy = 70, 200
+    S = 19.0                                    # px per hole
+    gx, gy = 70, 205
     bw, bh = (HOLES_X - 1) * S, (HOLES_Y - 1) * S
     o.append(rect(gx - S * 0.7, gy - S * 0.7, bw + S * 1.4, bh + S * 1.4,
                   BOARD, '#8a6a2a', 1.8, 4))
     for r in range(HOLES_Y):
         for c in range(HOLES_X):
             o.append(f'<circle cx="{gx + c * S:.1f}" cy="{gy + r * S:.1f}" '
-                     f'r="2.1" fill="none" stroke="#a8926f" stroke-width="0.8"/>')
-    # column / row rulers, so holes can be counted off the print
+                     f'r="1.9" fill="none" stroke="#a8926f" stroke-width="0.7"/>')
     for c in range(0, HOLES_X, 5):
         o.append(txt(gx + c * S, gy - S * 1.25, str(c + 1), 8, MUTE, 'middle'))
     for r in range(0, HOLES_Y, 5):
         o.append(txt(gx - S * 1.25, gy + r * S + 3, str(r + 1), 8, MUTE, 'end'))
+
+    # ---- the analogue | digital divide ----
+    dx = gx + 30.5 * S
+    o.append(line(dx, gy + 10 * S, dx, gy + 27 * S, ACC, 1.4, '6 4'))
+    o.append(txt(dx - 8, gy + 9.4 * S, 'ANALOGUE', 8.5, ACC, 'end', '700'))
+    o.append(txt(dx + 8, gy + 9.4 * S, 'DIGITAL', 8.5, ACC, 'start', '700'))
 
     # ---- zones over the grid ----
     for c0, r0, cw, rh, label, sub, col in ZONES:
@@ -445,53 +498,80 @@ def perfboard():
         w = (cw - 1) * S + S * 0.9
         h = (rh - 1) * S + S * 0.9
         o.append(rect(x, y, w, h, tint(col, 0.16), col, 2.0, 3))
-        o.append(txt(x + 7, y + 14, label, 9.5, col, weight='700'))
-        o.append(txt(x + 7, y + 26, sub, 7.8, MUTE))
-        # leader out to the right-hand notes column
-        o.append(line(x + w, y + h / 2, gx + bw + S * 1.4, y + h / 2, col, 1, '3 3'))
+        o.append(txt(x + 7, y + 13, label, 9.5, col, weight='700'))
+        if sub:
+            # wrap the sub-label to the zone width, then place it INSIDE the zone
+            # if it fits and immediately BELOW it if it does not - a short zone
+            # must still show its true hole count, so the text moves, not the box.
+            cap = max(28, int(w / 4.55))
+            lines, ln = [], ''
+            for wd in sub.split():
+                if len(ln) + len(wd) + 1 > cap:
+                    lines.append(ln); ln = wd
+                else:
+                    ln = (ln + ' ' + wd).strip()
+            lines.append(ln)
+            needed = 25 + 11 * (len(lines) - 1) + 3
+            inside = needed <= h
+            yy = y + 25 if inside else y + h + 11
+            if not inside:
+                # a backing panel, or the text fights the hole grid underneath
+                tw = max(len(l) for l in lines) * 4.25 + 14
+                o.append(f'<rect x="{x+2:.1f}" y="{yy-9:.1f}" width="{tw:.1f}" '
+                         f'height="{11*len(lines)+4:.1f}" fill="{PAPER}" '
+                         f'fill-opacity="0.93" stroke="{tint(col,0.45)}" '
+                         f'stroke-width="0.7" rx="2"/>')
+            for l in lines:
+                o.append(txt(x + 7, yy, l, 7.6, MUTE)); yy += 11
 
-    o.append(txt(gx, gy + bh + S * 2.2,
-                 f'{(HOLES_X-1)*PITCH_MM + PITCH_MM:.0f} mm  x  '
-                 f'{(HOLES_Y-1)*PITCH_MM + PITCH_MM:.0f} mm   '
-                 f'({HOLES_X} x {HOLES_Y} holes @ {PITCH_MM} mm)   '
-                 '- the carrier-hat-v1 footprint, so this layout transfers to the real PCB',
+    o.append(txt(gx, gy + bh + S * 2.0,
+                 f'grid {(HOLES_X-1)*PITCH_MM:.0f} x {(HOLES_Y-1)*PITCH_MM:.0f} mm  '
+                 f'({HOLES_X} x {HOLES_Y} holes @ {PITCH_MM} mm) on a 150 x 100 mm board.   '
+                 'COUNT YOUR OWN BOARD - vendors vary by a hole or two at the edges.',
+                 9, MUTE))
+    o.append(txt(gx, gy + bh + S * 2.0 + 15,
+                 'The 65 x 70 carrier-hat-v1 footprint is deliberately NOT matched: the corrected '
+                 'box takes the full board flat, and a HAT may overhang the Pi. Zones transfer to '
+                 'the real PCB; the outline does not.',
                  9, MUTE))
 
     # ---- rules column ----
-    rx = gx + bw + 120
+    rx = gx + bw + 95
     o.append(sans(rx, gy - 22, 'LAYOUT RULES', 12.5, INK, weight='700'))
     y = gy + 6
     for i, (t, why) in enumerate(RULES):
         o.append(txt(rx, y, f'{i+1}.  {t}', 10.5, ACC, weight='700'))
-        # wrap the explanation
         words, ln = why.split(), ''
-        yy = y + 17
+        yy = y + 16
         for wd in words:
-            if len(ln) + len(wd) > 62:
-                o.append(txt(rx + 16, yy, ln, 9, MUTE)); ln = wd; yy += 14
+            if len(ln) + len(wd) > 56:
+                o.append(txt(rx + 16, yy, ln, 8.8, MUTE)); ln = wd; yy += 13
             else:
                 ln = (ln + ' ' + wd).strip()
-        o.append(txt(rx + 16, yy, ln, 9, MUTE))
-        y = yy + 34
+        o.append(txt(rx + 16, yy, ln, 8.8, MUTE))
+        y = yy + 30
 
-    o.append(sans(rx, y + 6, 'WHAT TO KEEP FROM THE EXISTING BOARD', 12.5, INK, weight='700'))
-    keep = [
-        ('KEEP', 'the soldered MCP3208 and its 3.3 V / GND / VREF lines', SIG),
-        ('KEEP', 'any decoupling already fitted', SIG),
-        ('CUT',  'every jumper-to-jumper chain between modules - this is fault F2', ACC),
-        ('CUT',  'bare-wire twists and taped joints on any bus signal', ACC),
-        ('ADD',  'screw terminals for everything that leaves the box', RAIL3),
-        ('ADD',  'the passives on sheet 1 - R1-R6, C1, C2', RAIL3),
+    o.append(sans(rx, y + 8, 'ORDER OF WORK', 12.5, INK, weight='700'))
+    steps = [
+        ('1',    'both header strips, all 40 tails soldered. Mark pin 1', '#37474f'),
+        ('2',    'GND rail, flooded, to >= 2 Pi GND pins', GND),
+        ('3',    '+3.3 V rail from Pi pins 1 and 17', RAIL3),
+        ('4',    '+5 V rail - NOT connected to Pi pins 2/4', RAIL5),
+        ('GATE', 'GND / 3V3 / 5V all OPEN to each other, board OFF the Pi', ACC),
+        ('5',    'MCP3208 + C1', SPI),
+        ('6',    'R1 R2 pull-ups, R3-R6 dividers, C2', SIG),
+        ('7',    'screw terminals, every way labelled in pen', ACC),
+        ('8',    'onto the Pi. tests/test_all.py, one sensor at a time', SIG),
     ]
-    for i, (verb, what, col) in enumerate(keep):
-        yy = y + 30 + i * 19
-        o.append(rect(rx, yy - 10, 38, 15, col, 'none', 0, 2))
-        o.append(txt(rx + 19, yy + 1.5, verb, 8.5, '#fff', 'middle', '700'))
-        o.append(txt(rx + 48, yy + 1.5, what, 9.5, INK))
+    for i, (verb, what, col) in enumerate(steps):
+        yy = y + 32 + i * 19
+        o.append(rect(rx, yy - 10, 40, 15, col, 'none', 0, 2))
+        o.append(txt(rx + 20, yy + 1.5, verb, 8.5, '#fff', 'middle', '700'))
+        o.append(txt(rx + 50, yy + 1.5, what, 9.2, INK))
 
-    o.append(txt(70, H - 30,
-                 'Generated by scripts/gen_drawings.py.   Placement is deliberate; hole-exact '
-                 'routing is left to the physical board, whose MCP3208 is already soldered.',
+    o.append(txt(70, H - 28,
+                 'Generated by scripts/gen_drawings.py - edit ZONES there, not this SVG.   '
+                 'Placement is deliberate; hole-exact routing is yours to finish on the board.',
                  9, MUTE))
     body = '\n'.join(o)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
