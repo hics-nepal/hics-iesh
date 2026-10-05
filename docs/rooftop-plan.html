@@ -1,0 +1,524 @@
+<title>IESH Rooftop Layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single drafting sheet. Drawings run full width, prose stays at reading width. */
+:root {
+  --paper: #eef2f0;
+  --sheet: #f8faf9;
+  --ink: #1c2a35;
+  --muted: #5b6b77;
+  --rule: #c4cfd3;
+  --accent: #1d63a6;      /* drafting blue */
+  --assumed: #c2410c;     /* red pencil: assumed, measure it */
+  --cat5: #d4870a;
+  --hdmi: #7c4dd8;
+  --soil: #2f8a4a;
+  --power: #c22a2a;
+  --steel: #7f8f9b;
+  --water: #d8e6ee;
+  --tank: #2b3136;
+  --ontank: #e9eef1;
+  --earth: #8a6a4a;
+  --ok: #2f7d4a;
+  --warn: #a8660c;
+  --no: #b3332b;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #10171d; --sheet: #151e25; --ink: #dbe4ea; --muted: #93a3ae; --rule: #2c3a44;
+    --accent: #6aa8e6; --assumed: #f08a4b; --cat5: #f0a63a; --hdmi: #a98af0; --soil: #5cc07a;
+    --power: #ef6a5f; --steel: #8d9ea9; --water: #1f3340; --tank: #05080a; --ontank: #dbe4ea;
+    --earth: #a88663; --ok: #64c58a; --warn: #e6a64a; --no: #ef7a70; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #10171d; --sheet: #151e25; --ink: #dbe4ea; --muted: #93a3ae; --rule: #2c3a44;
+  --accent: #6aa8e6; --assumed: #f08a4b; --cat5: #f0a63a; --hdmi: #a98af0; --soil: #5cc07a;
+  --power: #ef6a5f; --steel: #8d9ea9; --water: #1f3340; --tank: #05080a; --ontank: #dbe4ea;
+  --earth: #a88663; --ok: #64c58a; --warn: #e6a64a; --no: #ef7a70; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.6 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 18px; }
+.eyebrow { font: 500 12px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(34px, 6vw, 54px)/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font: 600 26px/1.15 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h3 { font: 600 19px/1.2 var(--display); letter-spacing: .03em; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+code { font: 13px var(--mono); }
+.lede { font-size: 17px; max-width: 70ch; }
+.tag { display: inline-block; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 7px; border: 1px solid currentColor; border-radius: 3px; }
+.tag.assumed { color: var(--assumed); }
+.tag.rec { color: var(--accent); }
+.tag.ok { color: var(--ok); }
+section { display: grid; gap: 16px; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.sec-head .no { font: 500 13px var(--mono); color: var(--accent); }
+
+.changes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.change { background: var(--sheet); border: 1px solid var(--rule); padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.change b { font: 600 17px/1.2 var(--display); letter-spacing: .02em; }
+.change p { font-size: 14px; }
+
+.sheet { background: var(--sheet); border: 1px solid var(--rule); overflow-x: auto; }
+.sheet svg { display: block; width: 100%; min-width: 880px; height: auto; }
+.sheet.small svg { min-width: 420px; }
+.caption { display: flex; flex-wrap: wrap; gap: 8px 18px; font: 400 12.5px/1.4 var(--mono); color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.key i { display: inline-block; width: 22px; height: 3px; border-radius: 2px; }
+.details { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
+.details > div { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.notes { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; max-width: 68ch; }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tbl { overflow-x: auto; background: var(--sheet); border: 1px solid var(--rule); }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font: 500 11.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; }
+.v { font: 500 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.v.ok { color: var(--ok); } .v.warn { color: var(--warn); } .v.no { color: var(--no); }
+
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.decision { border: 1px solid var(--rule); background: var(--sheet); padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.opt { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 14px; }
+.opt .mk { font: 600 13px var(--mono); color: var(--muted); }
+.opt.pick .mk { color: var(--accent); }
+.opt.pick span:last-child b { color: var(--accent); }
+.opt.done .mk, .opt.done span:last-child b { color: var(--ok); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.cols > div { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.list { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; }
+.list .del { text-decoration: line-through; color: var(--muted); }
+
+.pipeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; background: var(--sheet); border: 1px solid var(--rule); }
+.pipeline li { counter-increment: step; display: grid; grid-template-columns: 44px 130px 1fr; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--rule); font-size: 14px; }
+.pipeline li:last-child { border-bottom: 0; }
+.pipeline li::before { content: counter(step, decimal-leading-zero); font: 500 13px var(--mono); color: var(--accent); padding-top: 1px; }
+.pipeline b { font: 600 16px/1.3 var(--display); letter-spacing: .03em; }
+.pipeline span { min-width: 0; }
+@media (max-width: 560px) { .pipeline li { grid-template-columns: 34px 1fr; } .pipeline li span { grid-column: 2; } }
+.cal { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.cal div { border-top: 3px solid var(--rule); padding-top: 8px; display: grid; gap: 2px; font-size: 13.5px; min-width: 0; }
+.cal div.target { border-top-color: var(--accent); }
+.cal .d { font: 500 13px var(--mono); }
+.cal .n { font: 600 18px/1.2 var(--display); letter-spacing: .02em; }
+footer { font: 400 12.5px/1.5 var(--mono); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 14px; }
+
+/* SVG drawing classes, all from tokens */
+svg text { fill: var(--ink); font-family: var(--mono); }
+svg .lbl { font-size: 58px; }
+svg .lbl-s { font-size: 48px; fill: var(--muted); }
+svg .ttl { font-family: var(--display); font-weight: 600; font-size: 74px; letter-spacing: 1px; fill: var(--ontank); }
+svg .d-lbl { font-size: 7.5px; }
+svg .d-lbl-s { font-size: 6.3px; fill: var(--muted); }
+svg .t-assumed { fill: var(--assumed); }
+svg .t-accent { fill: var(--accent); }
+.deck { fill: var(--rule); }
+.steel { fill: var(--steel); }
+.frame { stroke: var(--steel); fill: none; }
+.tank-b { fill: var(--tank); stroke: var(--steel); }
+.box { fill: var(--sheet); stroke: var(--ink); }
+.part { fill: var(--sheet); stroke: var(--ink); }
+.solid { fill: var(--ink); }
+.brick { fill: var(--earth); opacity: .55; }
+.earth { fill: var(--earth); opacity: .35; }
+.pot { fill: var(--earth); opacity: .7; }
+.pcb { fill: var(--soil); opacity: .8; }
+.pcb2 { fill: var(--accent); opacity: .75; }
+.glass { fill: var(--water); stroke: var(--accent); }
+.gasket { fill: var(--power); }
+.cap { fill: var(--steel); opacity: .6; }
+.dim { stroke: var(--muted); fill: none; }
+.dim-a { stroke: var(--assumed); fill: none; stroke-dasharray: 10 8; }
+.guide { stroke: var(--accent); fill: none; stroke-dasharray: 18 12; }
+.c-cat5 { stroke: var(--cat5); fill: none; }
+.c-hdmi { stroke: var(--hdmi); fill: none; }
+.c-soil { stroke: var(--soil); fill: none; }
+.c-pwr { stroke: var(--power); fill: none; }
+.drop { fill: var(--accent); }
+.hatch { stroke: var(--steel); fill: none; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">IESH v0.2 · rooftop deployment · plan · rev 6 · 5 Oct 2026</div>
+  <h1>Rooftop Station Plan</h1>
+  <p class="lede">One compact unit in the plastic box on hand, built with what exists. The camera and its 110 mm ribbon stay, and power stays as soldered: the 5 V 2 A adapter into the board's GPIO feed, the 1000 µF capacitor, and 3.3 V from the Pi. New parts only when cheap and sold in the valley. The order of work starts with the Tools Competition abstract, not the station.</p>
+  <p><span class="tag assumed">red = estimate, measure it</span> &nbsp; <span class="tag rec">blue = recommendation</span> &nbsp; <span class="tag ok">green = decided</span></p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="no">A</span><h2>First the abstract, then the station</h2></div>
+  <div class="cols">
+    <div>
+      <p><b>The Tools Competition Phase I abstract is due 13 Oct, 11:59 PM ET, which is 14 Oct, 09:44 NPT.</b> The application plan (<code>hics-docs/funding/tools-competition/2027/APPLICATION-PLAN.md</code>) targets submission on <b>10 Oct</b>, with the office hours on 8 Oct and an overclaim read before that.</p>
+      <p><b>The station adds nothing to that entry.</b> The plan keeps IESH outside the entry's claims (G8, G25), and dropped "a lesson on a real station's data" because there is no usable station data. Station work this week only competes with the abstract for the same hours.</p>
+    </div>
+    <div>
+      <p><b>So: abstract first, station after submission.</b> The station still matters. It's the first full day of data HICS has never had (F5), and it's what Nepal Week (8–12 Mar 2027) can be shown. It is also cheap to finish now: the parts are bought and the board is half done.</p>
+      <ul class="list">
+        <li>OK this week, as 10-minute breaks: the paper-strip ribbon test (section D) and metering the resistors.</li>
+        <li>After submission: the build order in section K, gate by gate. A failed gate with no cheap local fix is a stop point. Log what you have.</li>
+        <li>The hics-docs board still lacks the 13 Oct / 24 Nov / 21 Jan rows that the application plan asks for.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">B</span><h2>The unit</h2><span class="eyebrow">section · mm · the measured 130 / 170 / 230 box</span></div>
+  <div class="sheet">
+  <svg viewBox="-520 -400 960 560" role="img" aria-label="Section through the compact station unit: the plastic box lid-up on a shelf; Pi and board on the inside wall with the USB end up near the lid; the 110 mm ribbon leaves from under the board and climbs past the USB jacks to the camera in a short tower; a low hood just under the lens; sensors close outside.">
+    <style>
+      .u-lbl { font-size: 13px; } .u-lbl-s { font-size: 11px; fill: var(--muted); } .u-t { font-family: var(--display); font-weight: 600; font-size: 16px; }
+    </style>
+    <rect x="-60" y="20" width="120" height="140" fill="var(--rule)" stroke="var(--muted)" stroke-width="1"/>
+    <text class="u-lbl-s" x="-52" y="150">parapet or post</text>
+    <rect class="steel" x="-160" y="0" width="370" height="20"/>
+    <!-- box + lid -->
+    <polygon class="box" points="-67,0 67,0 87,-230 -87,-230" stroke-width="2.4"/>
+    <rect class="part" x="-95" y="-244" width="190" height="14" stroke-width="1.6"/>
+    <rect class="gasket" x="-91" y="-233" width="9" height="4"/>
+    <rect class="gasket" x="82" y="-233" width="9" height="4"/>
+    <line class="dim" x1="-97" y1="-240" x2="-97" y2="20" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <line class="dim" x1="97" y1="-240" x2="97" y2="20" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <!-- low hood -->
+    <line class="frame" x1="-125" y1="0" x2="-125" y2="-250" stroke-width="4"/>
+    <line class="frame" x1="125" y1="0" x2="125" y2="-250" stroke-width="4"/>
+    <rect class="cap" x="-145" y="-253" width="171" height="5"/>
+    <rect class="cap" x="66" y="-253" width="79" height="5"/>
+    <!-- short tower, camera, lens -->
+    <rect class="part" x="30" y="-264" width="32" height="20" stroke-width="1.4"/>
+    <rect class="pcb" x="33.5" y="-256" width="25" height="1.6"/>
+    <path class="glass" d="M 36 -264 a 10 8 0 0 1 20 0 z" stroke-width="1"/>
+    <rect class="gasket" x="31" y="-262" width="4" height="3"/>
+    <rect class="gasket" x="57" y="-262" width="4" height="3"/>
+    <!-- spikes -->
+    <line x1="-139" y1="-253" x2="-142" y2="-268" stroke="var(--ink)" stroke-width="1.6"/>
+    <line x1="-131" y1="-253" x2="-131" y2="-268" stroke="var(--ink)" stroke-width="1.6"/>
+    <line x1="131" y1="-253" x2="131" y2="-268" stroke="var(--ink)" stroke-width="1.6"/>
+    <line x1="139" y1="-253" x2="142" y2="-268" stroke="var(--ink)" stroke-width="1.6"/>
+    <!-- LDR -->
+    <path class="glass" d="M -88 -253 a 8 7 0 0 1 16 0 z" stroke-width="1"/>
+    <!-- raindrop -->
+    <line class="frame" x1="125" y1="-200" x2="172" y2="-200" stroke-width="3"/>
+    <polygon class="pcb" points="167,-203 237,-243 240,-237 170,-197"/>
+    <line class="guide" x1="-300" y1="-268" x2="330" y2="-268" stroke-width="1"/>
+
+    <!-- inside: Pi on right wall, USB end up -->
+    <rect class="solid" x="70" y="-206" width="11" height="4"/>
+    <rect class="solid" x="70" y="-146" width="11" height="4"/>
+    <rect class="pcb" x="68.4" y="-215" width="1.6" height="85"/>
+    <rect class="part" x="52" y="-217" width="16.4" height="19" stroke-width=".8"/>
+    <rect fill="#e0b000" x="63" y="-176" width="5.4" height="4"/>
+    <rect class="pcb2" x="53.4" y="-192" width="1.6" height="100"/>
+    <rect class="solid" x="40" y="-150" width="13.4" height="20"/>
+    <rect class="part" x="36" y="-120" width="17.4" height="12" rx="2" stroke-width=".8"/>
+    <rect class="part" x="40" y="-104" width="13.4" height="12" stroke-width=".8"/>
+    <!-- ribbon -->
+    <path class="c-hdmi" stroke-width="2" d="M 63 -174 C 60 -174, 60 -178, 60 -183 L 60 -191 C 60 -195, 56 -195.5, 50 -195.5 C 47 -195.5, 47 -199, 47 -204 L 47 -255"/>
+    <!-- desiccant, vent -->
+    <rect class="part" x="-30" y="-16" width="40" height="12" stroke-width="1"/>
+    <rect class="solid" x="68" y="-14" width="3" height="3"/>
+    <!-- entries -->
+    <rect class="solid" x="-82" y="-50" width="12" height="10"/>
+    <rect class="solid" x="-80" y="-30" width="12" height="10"/>
+    <path class="c-cat5" stroke-width="1.6" d="M -70 -45 C -10 -45, 10 -80, 40 -96"/>
+    <path class="c-pwr" stroke-width="1.6" d="M -68 -25 C -20 -25, 20 -70, 40 -100"/>
+
+    <!-- outside -->
+    <path class="c-cat5" stroke-width="3" d="M -82 -45 C -110 -45, -112 -10, -135 -10 L -400 -10 L -400 -60"/>
+    <path class="c-cat5" stroke-width="2.4" d="M -135 -10 C -150 -10, -165 10, -170 26"/>
+    <path class="c-pwr" stroke-width="3" d="M -80 -25 C -100 -25, -100 30, -90 60 L -90 160"/>
+    <path class="c-soil" stroke-width="3" d="M -80 -25 C -96 -20, -96 40, -75 70 L -75 160"/>
+    <rect class="steel" x="-430" y="-6" width="270" height="8"/>
+    <line x1="-400" y1="-150" x2="-400" y2="-6" stroke="var(--steel)" stroke-width="3"/>
+    <rect class="part" x="-460" y="-152" width="120" height="7" stroke-width="1.2"/>
+    <rect class="part" x="-450" y="-130" width="100" height="6" stroke-width="1.2"/>
+    <rect class="part" x="-450" y="-110" width="100" height="6" stroke-width="1.2"/>
+    <rect class="part" x="-450" y="-70" width="100" height="6" stroke-width="1.2"/>
+    <rect class="part" x="-450" y="-50" width="100" height="6" stroke-width="1.2"/>
+    <rect class="part" x="-450" y="-30" width="100" height="6" stroke-width="1.2"/>
+    <rect class="pcb2" x="-412" y="-100" width="24" height="24"/>
+    <rect class="part" x="-215" y="26" width="90" height="62" stroke-width="1.6"/>
+    <line class="hatch" x1="-203" y1="88" x2="-203" y2="100" stroke-width="2.4"/>
+    <line class="hatch" x1="-183" y1="88" x2="-183" y2="100" stroke-width="2.4"/>
+    <line class="hatch" x1="-163" y1="88" x2="-163" y2="100" stroke-width="2.4"/>
+    <line class="hatch" x1="-143" y1="88" x2="-143" y2="100" stroke-width="2.4"/>
+    <line class="dim" x1="-400" y1="16" x2="-87" y2="16" stroke-width="1" stroke-dasharray="4 3"/>
+    <text class="u-lbl-s" x="-395" y="32">≥ 300 from the box wall</text>
+
+    <!-- labels -->
+    <text class="u-t" x="-500" y="-372">OUTSIDE</text>
+    <text class="u-t" x="150" y="-372">INSIDE + ON TOP</text>
+    <text class="u-lbl" x="-500" y="-190">radiation shield, DHT22</text>
+    <text class="u-lbl-s" x="-500" y="-174">on a short arm, ≈0.5 m cable</text>
+    <text class="u-lbl" x="-500" y="122">gas pod under the shelf</text>
+    <text class="u-lbl-s" x="-500" y="138">vents down, ≈0.4 m cable</text>
+    <text class="u-lbl-s" x="-100" y="150" text-anchor="end">↓ adapter box, pot</text>
+    <text class="u-lbl" x="-330" y="-310">bird spikes: cut cable ties</text>
+    <text class="u-lbl-s" x="-180" y="-276">LDR</text>
+    <line class="dim" x1="-160" y1="-280" x2="-82" y2="-257" stroke-width=".6"/>
+    <text class="u-lbl" x="-60" y="-345">short tower: lens just above a low hood</text>
+    <text class="u-lbl-s" x="-60" y="-330">fisheye under a lip, dew heater at the ring</text>
+    <line class="dim" x1="0" y1="-325" x2="40" y2="-266" stroke-width=".6"/>
+    <text class="u-lbl-s t-accent" x="245" y="-272">lens horizon</text>
+    <text class="u-lbl" x="250" y="-225">raindrop plate, 30°</text>
+    <text class="u-lbl" x="160" y="-190">110 mm ribbon: out from under</text>
+    <text class="u-lbl-s" x="160" y="-175">the board at its A-edge, up past</text>
+    <text class="u-lbl-s" x="160" y="-161">the USB jacks to the camera</text>
+    <line class="dim" x1="158" y1="-186" x2="62" y2="-188" stroke-width=".6"/>
+    <text class="u-lbl" x="160" y="-130">Pi 3B+ + board on the wall,</text>
+    <text class="u-lbl-s" x="160" y="-115">USB/Ethernet end up, by the lid</text>
+    <line class="dim" x1="158" y1="-134" x2="70" y2="-150" stroke-width=".6"/>
+    <text class="u-lbl-s" x="160" y="-92">terminals at the bottom edge</text>
+    <line class="dim" x1="158" y1="-95" x2="54" y2="-98" stroke-width=".6"/>
+    <text class="u-lbl-s" x="160" y="-12">2 mm vent + PTFE, low</text>
+    <line class="dim" x1="158" y1="-15" x2="72" y2="-12" stroke-width=".6"/>
+    <text class="u-lbl" x="215" y="40">box strapped to the shelf;</text>
+    <text class="u-lbl-s" x="215" y="55">the strap also holds the lid shut</text>
+    <text class="u-lbl-s" x="-250" y="-55">entries, low, one wall</text>
+    <line class="dim" x1="-120" y1="-58" x2="-84" y2="-47" stroke-width=".6"/>
+    <text class="u-lbl-s" x="-30" y="-22">desiccant</text>
+  </svg>
+  </div>
+  <div class="caption">
+    <span class="key"><i style="background:var(--cat5)"></i>sensor CAT5e</span>
+    <span class="key"><i style="background:var(--hdmi)"></i>110 mm camera ribbon</span>
+    <span class="key"><i style="background:var(--soil)"></i>soil CAT5e</span>
+    <span class="key"><i style="background:var(--power)"></i>5 V in (Pi pair + heater pair)</span>
+    <span>The box is measured. The Pi and ribbon geometry use the Pi 3B+ positions in roofbox.scad and BOARD-BUILD's 23 mm port overhang. Measure them on the real board.</span>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">C</span><h2>Where the unit goes</h2></div>
+  <div class="cols">
+    <div>
+      <p>The camera in the lid needs open sky, so the whole unit goes where the sky is open. The rule is angle, not height: anything that rises Δh above the lens at distance <i>d</i> blocks up to atan(Δh/<i>d</i>). Buildings already take the bottom 10–15° of every Kathmandu horizon, so anything kept under 15° is free. For that, <b><i>d</i> ≥ 3.7 × Δh</b>.</p>
+      <p><b>First choice: a parapet or the stairwell roof</b>, far enough from the tank. Strap a shelf to it, and the unit needs no bracket at all. It also puts the unit near the stair door, so maintenance is easy.</p>
+      <p><b>Fallback: beside the tank</b>, on a short GI pipe clamped to the stand corner, with the lens above the tank top. Use it only if no open spot exists. It's more metal and more height, and the box is fully exposed up there.</p>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Tank top above the lens (Δh)</th><th>Keep the unit at least this far from the tank</th></tr></thead>
+      <tbody>
+        <tr><td>0.5 m</td><td>1.9 m</td></tr>
+        <tr><td>1.0 m</td><td>3.7 m</td></tr>
+        <tr><td>1.5 m <span class="v">(lens on a ~1 m parapet)</span></td><td>5.6 m</td></tr>
+        <tr><td>2.0 m</td><td>7.5 m</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <p style="font-size:14px">Your tank top is ≈2.4 m up (1 m stand + ≈1.3 m tank, typical for 1000 L). The roof photos will show which spots pass. Choose the spot nearest the stair door that passes, then check Wi-Fi there with a phone before fixing anything.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">D</span><h2>The 110 mm ribbon: careful placement</h2></div>
+  <div class="cols">
+    <div>
+      <p><b>The board covers the camera connector.</b> On a Pi 3B+, the connector sits about 44 mm from the power end. Your board stops 23 mm short of the USB/Ethernet end (BOARD-BUILD), so the connector is ~20 mm under the board. The ribbon has to leave the connector, run under the board, and come out at the board's A-edge. That edge is ~4 mm in front of the USB jack, the only gap on that side.</p>
+      <p><b>Only one orientation can reach.</b> The Pi goes on the inside wall with the USB/Ethernet end up, close under the lid. The ribbon comes out at the A-edge, climbs past the USB jack faces, and goes through the lid into a short tower. The estimated route is ~100–110 mm, which uses all of a 110 mm ribbon. Hanging the Pi from the lid (sheet 4) does <i>not</i> work with this board: the ribbon would have to go round the jacks and back.</p>
+      <p style="font-size:14px;color:var(--muted)">Correction: the HANDOFF and <code>roofbox_check.py</code> "~90 mm, reaches" result was computed for a 65 × 70 board that didn't cover the connector. It doesn't apply to the 100 × 150 board you are building.</p>
+    </div>
+    <div>
+      <h3>Paper-strip test, before anything is fixed</h3>
+      <ul class="list">
+        <li>Cut a 110 mm paper strip, 16 mm wide. Plug the board onto the Pi.</li>
+        <li>Tuck one end where the ribbon enters the Pi's camera connector. Fold it flat under the board, out at the A-edge, and up past the USB jacks.</li>
+        <li>Hold the Pi + board against the inside wall, USB end up, as close under the lid as the jacks allow. Mark where the strip's end meets the lid. That's where the tower bore goes.</li>
+        <li>Allow ~4 mm at each end for the connectors, and ~15 mm from the lid face to the camera board inside a short tower.</li>
+        <li><b>Pass:</b> the strip reaches with ≥5 mm to spare. <b>Fail:</b> the 30 cm ribbon (Himalayan Solution, in stock) is the cheap fix. Nothing else gets you round the board.</li>
+      </ul>
+      <p style="font-size:14px"><b>Opening the box:</b> with a 110 mm ribbon the lid can't lift far, so unplug the ribbon at the camera end first. That connector has a latch; handle it gently. It's fine for occasional service, not for weekly opening.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">E</span><h2>Power, as built</h2></div>
+  <div class="cols">
+    <div>
+      <p><b>Decided: no new supply.</b> The 5 V 2 A barrel adapter feeds the Pi through the board's GPIO feed (<code>(47,W)</code> → pins 2/4), with the 1000 µF at the feed and 3.3 V from the Pi on rail 43. The MQ heater rail (41) takes the other 5 V source, the USB charger with its lead cut short, grounds joined at rail 45. That's BOARD-BUILD §2 as it stands.</p>
+      <p>On 13 Sep this was clean at idle and undervolted under a sustained 4-core load. The camera pipeline is a sustained load, so make it a lighter one. All of the following is free:</p>
+      <ul class="list">
+        <li><code>arm_freq=1000</code> in <code>config.txt</code>, down from 1400 MHz. Less current at peak.</li>
+        <li>Bluetooth off (<code>dtoverlay=disable-bt</code>). No HDMI display attached in the field.</li>
+        <li>The sky pipeline runs at 640 × 480 and a few frames per second, on one core.</li>
+        <li><b>Shortest 5 V lead possible:</b> put the adapter in its own small box right beside the unit, and run the mains extension to it. Extend the mains side, never the 5 V side.</li>
+        <li>Log <code>get_throttled</code> every minute as a health channel, and flag readings and sky events recorded during undervoltage. The data stays honest even when power isn't perfect.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Gate, and what happens if it fails</h3>
+      <p>With the caps applied and the pipeline running, <code>vcgencmd get_throttled</code> reads <code>0x0</code> for an hour.</p>
+      <ul class="list">
+        <li><b>Fails:</b> swap the two 5 V sources, so the USB charger feeds the Pi and the barrel adapter feeds the heaters. Retest.</li>
+        <li><b>Still fails:</b> run the sky pipeline only by day and in short night windows. Weather logging is light and should pass on its own.</li>
+        <li><b>Last resort:</b> an LM2596 buck converter with the 12 V adapter, about ₨150–200 at SLT. Note it, don't buy it now.</li>
+      </ul>
+      <h3>Dew heater on the heater rail</h3>
+      <p style="font-size:14px">Eight 220 Ω ¼ W resistors in parallel on rail 41 (5 V): ≈0.9 W total, 0.11 W each, 0.18 A from the heater supply, nothing from the Pi's. Bed them around the lens ring. Bill 724's 30 unlabelled resistors probably include 220–330 Ω, the usual LED values, so meter them first. 330 Ω gives ≈0.6 W.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">F</span><h2>Fisheye, tower and hood</h2></div>
+  <div class="cols">
+    <div>
+      <p>✓ <b>The camera and fisheye both work</b> (5 Oct), so F6 is closed. The OV5647 board is 25 × 24 mm, and the fisheye's knurled ring sits on a flat clip arm.</p>
+      <ul class="list">
+        <li><b>If the ring unscrews from the arm:</b> seat it under a 2 mm lip at the tower top, bedded in neutral-cure silicone.</li>
+        <li><b>If it doesn't:</b> the flat arm is the mounting plate. Bolt or zip-tie it across the tower top with the lens centred over the camera, and seal under it.</li>
+        <li>Set the gap between the fisheye and the camera's lens (≈3 mm, U3) with washers.</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="list">
+        <li><b>Short tower:</b> ≈20 mm of 50 mm PVC offcut through the lid, with a drilled end cap. Short is not a style choice: every millimetre of tower is ribbon you don't have.</li>
+        <li><b>Low hood:</b> a corrugated-plastic or tin offcut ≈290 mm square, on four sticks or bolts from the shelf, a few mm above the lid. It has a hole for the tower, so the lens sits just above it. It shades the box and keeps rain off the gasket without standing in the lens's view.</li>
+        <li>Grab one fisheye frame and note how much of the sensor the image circle fills. That's the field of view to plan the spikes and hood edge around.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">G</span><h2>Cable lengths</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Run</th><th>Cable</th><th>Length</th><th>Carries</th></tr></thead>
+    <tbody>
+      <tr><td>Camera</td><td>15-pin ribbon, inside</td><td>110 mm, on hand</td><td>Camera ↔ Pi. Placement in section D.</td></tr>
+      <tr><td>Sensors</td><td>CAT5e, one cable, splits at the shelf</td><td>≈0.6 m</td><td>DHT22: 3.3 V, GND, DATA. MQ: 5 V heater, heater GND, MQ-7 AOUT, MQ-135 AOUT. One spare core.</td></tr>
+      <tr><td>Raindrop, LDR</td><td>short leads</td><td>≈0.3 m</td><td>CH3, CH4, 3.3 V, GND</td></tr>
+      <tr><td>Soil</td><td>CAT5e, 4 cores</td><td>≈1 m</td><td>3.3 V, GND, DS18B20, soil AOUT. <b>Move a big planted pot next to the unit.</b></td></tr>
+      <tr><td>Power</td><td>the adapters' own leads, one entry</td><td>as short as possible</td><td>Pi 5 V pair + heater 5 V pair, from the adapter box beside the unit</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:14px">Three entries, low in one wall: sensors, soil, power. Use PG7 glands, or a drilled hole with a rubber grommet and neutral-cure silicone. The board's 24 terminal ways cover everything with room to spare.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">H</span><h2>Buy, or hack with what's here</h2></div>
+  <div class="cols">
+    <div>
+      <h3>Buy (local, cheap)</h3>
+      <ul class="list">
+        <li>Neutral-cure silicone. Acetoxy silicone corrodes copper.</li>
+        <li>PG7 glands ×3, or rubber grommets</li>
+        <li>White plant saucers ×5–7, for the shield</li>
+        <li>Bolts, nyloc nuts, washers, hose clamps or a strap</li>
+        <li>220 Ω resistors ×8, only if bill 724 has none (SLT, ≈₨1 each)</li>
+        <li>Desiccant sachets, or silica packets saved from packaging</li>
+      </ul>
+    </div>
+    <div>
+      <h3>On hand or scrap</h3>
+      <ul class="list">
+        <li>The box, Pi 3B+, board, camera, 110 mm ribbon, fisheye</li>
+        <li>5 V 2 A adapter, USB charger, 1000 µF capacitors, 4.7 kΩ resistors, terminals</li>
+        <li>DHT22 ×2, MQ-7, MQ-135, raindrop, LDR, DS18B20, soil probe, CAT5e</li>
+        <li>50 mm PVC offcut + cap, a hood offcut, a shelf plank, a shield arm, cable ties for spikes</li>
+      </ul>
+      <h3>Only if a gate fails</h3>
+      <ul class="list">
+        <li>30 cm camera ribbon (Himalayan Solution): if the paper test fails</li>
+        <li>LM2596 buck converter (SLT): if power still fails after the software caps and the supply swap</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">I</span><h2>Risks that remain</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Risk</th><th>What we do</th></tr></thead>
+    <tbody>
+      <tr><td>Ribbon too short</td><td>The paper test before anything is fixed. Fallback: the 30 cm ribbon.</td></tr>
+      <tr><td>Undervoltage under the night load (F1)</td><td>Software caps, the shortest 5 V lead, <code>get_throttled</code> logged and flagged. Then the gate's fallback ladder (section E).</td></tr>
+      <tr><td>Dew on the lens on clear winter nights</td><td>The resistor dew heater on the heater rail. Prove it on the first dewy night.</td></tr>
+      <tr><td>Heat: a sealed box in sun</td><td>Low hood, light daytime load, Pi temperature logged. Paint the box white if it runs hot.</td></tr>
+      <tr><td>Warm bias at the shield</td><td>≥300 mm from the box, on the shaded side. Run the spare DHT22 further out for a week to measure the bias.</td></tr>
+      <tr><td>Wi-Fi at the chosen spot</td><td>Phone check first. The station logs locally and uploads later.</td></tr>
+      <tr><td>Crows, monkeys</td><td>Cable-tie spikes, no foil, a strap over the lid, everything bolted, no loose loops.</td></tr>
+      <tr><td>The station eating the abstract week</td><td>Section A. Abstract first.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">J</span><h2>Everything that crosses the sky</h2></div>
+  <p>One service, <code>hics-sky</code>, separate from weather logging, builds on <code>sensors/camera.py</code> (<code>capture_sky()</code>, <code>stream_frames()</code>):</p>
+  <ol class="pipeline">
+    <li><b>Capture</b><span>Night video, 2×2-binned 1296 × 972, ~5 fps, 0.2 s exposures, fixed gain, a ~10 s ring buffer. By day, a still every few minutes for cloud cover and sunshine.</span></li>
+    <li><b>Compress</b><span>Per 256-frame block, keep max-pixel, frame-of-max, mean and standard deviation (the Global Meteor Network's idea).</span></li>
+    <li><b>Detect + track</b><span>Threshold, find lines and blobs, link them into tracks.</span></li>
+    <li><b>Identify</b><span>Planets, Moon and stars by ephemeris. Satellites from CelesTrak orbit data. Aircraft by slow, blinking tracks. Meteors as fast, straight and not blinking. Lightning as a whole-frame flash. Lens dirt as a patch that stays fixed while the sky turns.</span></li>
+    <li><b>Calibrate</b><span>Sun track by day, refined nightly from planets, stars and satellite passes.</span></li>
+    <li><b>Log</b><span>An events table: time, class, confidence, alt-az track, brightness, and a clip for meteors and unknowns. Meteors stay candidates (G9).</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">K</span><h2>Build order</h2><span class="eyebrow">gated · sequenced, not dated (G3)</span></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Step</th><th>Gate</th></tr></thead>
+    <tbody>
+      <tr><td>✓ <b>0 · Camera + fisheye</b> work</td><td>Passed 5 Oct</td></tr>
+      <tr><td><b>1 · Tools Competition abstract</b> submitted (external, 13 Oct ET)</td><td>Confirmation email saved</td></tr>
+      <tr><td><b>2 · Paper-strip ribbon test</b> in the real box (section D)</td><td>Reaches with ≥5 mm spare, or switch to the 30 cm ribbon</td></tr>
+      <tr><td><b>3 · Finish the board:</b> R1–R6, C2, the dew-heater pads, terminals along the bottom edge, labels</td><td>Every net buzzed against sheet 1</td></tr>
+      <tr><td><b>4 · Firmware:</b> restart services. Add CH3 raindrop, CH4 LDR, Pi temperature and throttle flags. Apply <code>arm_freq</code> and Bluetooth off. Fix <code>INTERNET_IFACE</code>.</td><td>The <code>| NULL:</code> note names only what's unplugged</td></tr>
+      <tr><td><b>5 · Power gate</b> with the camera streaming at the pipeline's settings</td><td><code>0x0</code> for an hour, or work down the fallback ladder</td></tr>
+      <tr><td><b>6 · Sensors one at a time</b>, then 24 h on the bench in the closed box</td><td>~1440 rows, Pi temperature logged</td></tr>
+      <tr><td><b>7 · Site:</b> photos, the angle rule, Wi-Fi check, the household's OK</td><td>A spot that passes all four</td></tr>
+      <tr><td><b>8 · Install</b> on the roof</td><td>48 h clean data, then the website decision (§15)</td></tr>
+      <tr><td><b>9 · Sky pipeline:</b> day stills, then night tracks, validated on an ISS pass</td><td>ISS detected, identified and placed within a degree or two</td></tr>
+    </tbody>
+  </table></div>
+  <div class="cal">
+    <div><span class="d">13 Oct 2026 ET</span><span class="n">Tools abstract</span><span>14 Oct 09:44 NPT hard deadline. The plan targets 10 Oct.</span></div>
+    <div><span class="d">13–14 Dec 2026</span><span class="n">Geminids</span><span>A good target if the station is up, under a waxing crescent Moon that sets early. Not a deadline.</span></div>
+    <div class="target"><span class="d">8–12 Mar 2027</span><span class="n">Nepal Week</span><span>The external date this feeds: a station with months of data to show.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="no">L</span><h2>Decisions</h2></div>
+  <div class="decisions">
+    <div class="decision">
+      <h3>Settled 5 Oct</h3>
+      <div class="opt done"><span class="mk">✓</span><span><b>One compact unit</b> in the existing box, sensors within ~0.5 m.</span></div>
+      <div class="opt done"><span class="mk">✓</span><span><b>Existing 110 mm ribbon</b>, placed carefully.</span></div>
+      <div class="opt done"><span class="mk">✓</span><span><b>Power as built:</b> 5 V 2 A into the GPIO feed, 1000 µF, 3.3 V from the Pi. No buck.</span></div>
+      <div class="opt done"><span class="mk">✓</span><span><b>Cheap local parts only</b>, otherwise DIY. <b>Log every sky object.</b></span></div>
+    </div>
+    <div class="decision">
+      <h3>Recommended</h3>
+      <div class="opt pick"><span class="mk">●</span><span><b>Abstract first</b>, station work after submission.</span></div>
+      <div class="opt pick"><span class="mk">●</span><span><b>Pi on the wall, USB end up</b>: the one orientation the ribbon can reach.</span></div>
+      <div class="opt pick"><span class="mk">●</span><span><b>Free power trims</b> before any purchase.</span></div>
+    </div>
+    <div class="decision">
+      <h3>Waiting on the roof photos</h3>
+      <div class="opt"><span class="mk">○</span><span>Parapet or stairwell spot (first choice) vs. beside the tank on a pipe.</span></div>
+      <div class="opt"><span class="mk">○</span><span>Which pot moves next to the unit.</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Plan rev 6. HANDOFF §0.1 points here. Still to redo in the repo once the spot is chosen: roofbox.scad (Pi on the wall, USB end up, short tower, low hood), roofbox_check.py (a ribbon route that accounts for the 100 × 150 board), sheet 3's cable map, the BOARD-BUILD terminal step, and HANDOFF §7, §10, §12 and §13 in full.
+</footer>
+
+</div>

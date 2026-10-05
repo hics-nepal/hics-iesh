@@ -9,7 +9,17 @@ python3 scripts/gen_drawings.py      # sheets 1-4 + bench.html
 docs/cad/render.sh                   # CAD renders, templates, numeric checks (~2 min)
 ```
 
-## At the bench: `bench.html`
+## At the bench
+[`../BOARD-BUILD.md`](../BOARD-BUILD.md) — **the live working doc for the board being built
+now**: board coordinates, orientation anchors, layout map, power topology, steps and gates.
+Hand-written and ticked off as the work happens, unlike everything else here.
+
+## The rooftop plan
+[`rooftop-plan.html`](rooftop-plan.html) — **the site plan as of 2026-10-05**: everything on the
+water-tank stand, the Pi + camera head unit, cable map after the move, risks, the sky pipeline
+and the gated build order. Supersedes the tile-and-mast layout in the CAD until that is redone.
+
+## Also at the bench: `bench.html`
 [`bench.html`](bench.html) — all four sheets, the key renders and the §14 gates on one
 scrolling page. Open it on a phone or tablet next to the soldering iron.
 
@@ -17,7 +27,7 @@ scrolling page. Open it on a phone or tablet next to the soldering iron.
 | # | File | Use it for |
 |---|---|---|
 | 1 | [`schematic.svg`](drawings/schematic.svg) | every net, named — the name is what you write on the wire |
-| 2 | [`perfboard.svg`](drawings/perfboard.svg) | where each block goes on the 65 × 70 board; keep / cut / add |
+| 2 | [`perfboard.svg`](drawings/perfboard.svg) | **what you solder from.** Where each block goes on the blank 100 × 150 board (57 × 37 holes), the separation rules, and the order of work with its gate |
 | 3 | [`pinout.svg`](drawings/pinout.svg) | the 40-pin header with used pins coloured; every CAT5e core traced terminal → sensor pin |
 | 4 | [`lid-layout.svg`](drawings/lid-layout.svg) | where to bond the standoffs and tie mounts, in mm from the lid centre — read from the CAD |
 

@@ -52,6 +52,42 @@ camera is removed, and the undervoltage is still present on both supplies tried 
 The immediate next action is not building anything; it is **making `vcgencmd get_throttled`
 read `0x0` and keeping it there.**
 
+### 0.1 ⚠ Site plan revised 2026-10-05: read before §7, §10, §12, §13
+
+The site details are now known: a black **1000 L water tank on a ≈1 m iron-frame stand** with
+an open-bar top, and **crows and monkeys** on the roof. The plan built on them is
+**[`docs/rooftop-plan.html`](docs/rooftop-plan.html)** (rev 6). **Where it conflicts with
+§7/§10/§12/§13, the plan wins.** Those sections get rewritten once a spot on the roof is chosen.
+
+- ✅ **F6 closed, per Pawan 2026-10-05:** the OV5647 and the clip-on fisheye both work.
+- **Settled:** the station is **one compact unit in the existing container**. The camera is in
+  a lid tower under a small hood. The Pi and HAT sit on the shaded inside wall. Every outdoor
+  sensor stays within ~0.5 m: the DHT22 shield on a short arm ≥300 mm from the box, the gas pod
+  under the shelf, and the raindrop and LDR on the hood. The camera logs every sky object, not
+  just meteors. New parts only if cheap and sold in Kathmandu; otherwise DIY.
+- **Siting rule:** the lens needs no tall object within atan(Δh/d) > 15°, i.e. d ≥ 3.7 × Δh.
+  First choice is a parapet or stairwell spot far enough from the tank. Fallback is a pipe at
+  the stand corner above the tank.
+- **Superseded:** the box on a tile, the large hood table, the sensor mast, the 8-core mast
+  cable map (sheet 3), and the "drill the lid nowhere" rule.
+- **Settled, power:** as built (BOARD-BUILD §2). 5 V 2 A into the GPIO feed, 1000 µF, 3.3 V
+  from the Pi, heater rail on the other 5 V source. **No buck.** F1 is managed in software:
+  `arm_freq=1000`, Bluetooth off, the sky pipeline at 640 × 480 on one core, the shortest 5 V
+  lead (extend the mains side, not the 5 V side), and `get_throttled` logged and flagged. The
+  LM2596 is only the last rung of the fallback ladder.
+- **Settled, ribbon:** keep the 110 mm ribbon. The 100 × 150 HAT covers the camera connector
+  (≈44 mm from the Pi's power end, ≈20 mm under the board), so the **only** orientation that
+  can reach is: Pi on the inside wall, **USB/Ethernet end up** under the lid, ribbon out at the
+  board's A-edge through the ~4 mm gap before the USB jack, short tower. Paper-strip test
+  before fixing anything; the 30 cm ribbon (Himalayan Solution) is the fallback.
+  ⚠ **Correction:** `roofbox_check.py`'s "110 mm FFC reaches (~90 mm)" was computed for a
+  65 × 70 HAT that did not cover the connector. It does not hold for the board being built.
+  Hanging the Pi from the lid (sheet 4) does not reach with this board.
+- **Sequencing:** the Tools Competition Phase I abstract (13 Oct 11:59 PM ET = 14 Oct
+  09:44 NPT; see `hics-docs/funding/tools-competition/2027/APPLICATION-PLAN.md`) comes first.
+  That entry keeps IESH outside its claims, so station work after submission. Add a dew heater
+  from day one: eight 220 Ω resistors on the heater rail.
+
 ---
 
 ## 1. The repos and where truth lives
@@ -312,7 +348,8 @@ boards hanging off unsupported leads. The black power bank at left was the origi
 (F1). This is the thing being replaced.
 
 **[`02-container-exterior.jpg`](docs/reference-photos/02-container-exterior.jpg) — the found
-enclosure.** *Measured: **120 × 120 mm base, 180 mm tall**, excluding the rim.* The taper,
+enclosure.** *Re-measured 2026-09-11: **130 × 130 mm base, 170 × 170 mm top, 230 mm tall,
+internal** — materially bigger than the 120 × 120 × 180 first recorded (§5 table).* The taper,
 rim width and wall thickness in `roofbox.scad` were **estimated from this image** — U1.
 
 **[`03-container-interior-gasket.jpg`](docs/reference-photos/03-container-interior-gasket.jpg)
@@ -331,17 +368,24 @@ this photo.
 
 | Item | Dimension | Source |
 |---|---|---|
-| Container body | **120 × 120 mm base, 180 mm tall** (excl. rim) | measured |
-| Container taper / rim / wall | top ≈130 mm, rim ≈8 mm, wall ≈1.8 mm | **estimated — U1** |
+| Container body | **130 × 130 mm base, 170 × 170 mm top, 230 mm tall — all internal** | **re-measured 2026-09-11.** Supersedes the 120 × 120 × 180 previously recorded here as *measured* |
+| Container taper / rim / wall | rim ≈8 mm, wall ≈1.8 mm | **still estimated — U1** |
 | Camera board (OV5647 Rev 1.3) | 25 × 24 mm, M2 holes on a 12.5 mm grid | datasheet + photo |
 | Camera ribbon | **≈110 mm** | measured |
 | Fisheye knurled ring | ≈Ø23 × 9 mm | **estimated — U2** |
 | Fisheye back-focal gap | ≈3 mm | **guess, needs trial — U3** |
 | Raspberry Pi 3B+ | 85 × 56 mm, M2.5 on a 58 × 49 grid, ports 17 mm tall | datasheet |
-| Protoboard target | 65 × 70 mm = 25 × 27 holes @ 2.54 mm | `carrier-hat-v1` footprint |
-| Verified stack height | **80.5 mm in 178 mm** interior depth (98 mm spare) | computed |
+| Protoboard in use | **100 × 150 mm** (`PY-10CM*15CM`), **uncut** | measured. The corrected box holds it flat in its top ~115 mm, so it is *not* trimmed to the 65 × 70 `carrier-hat-v1` footprint |
+| Protoboard spares | 1 × 100 × 150 mm blank, 2 × 50 × 70 mm blank | measured |
+| Verified stack height | ~~80.5 mm in 178 mm~~ | **stale — computed against the old box. Recompute once `roofbox.scad` is corrected** |
 
-### Parts inventory — transcribed from the two supplier bills
+> ⚠ **The CAD has not caught up with the corrected box.** `roofbox.scad`, every render, both
+> 1:1 templates and all of `roofbox_check.py` still model 120 × 120 × 180. Do not cut, drill or
+> print from them until they are regenerated. The hood plate and leg lengths in §13 are
+> likewise sized for the old box — ≈250 mm plate and ≈280 mm legs are the arithmetic for the
+> real one, unconfirmed by the CAD.
+
+### Parts inventory — transcribed from the three supplier bills
 Supplier: **Supreme Light Technology Pvt. Ltd.**, Sanepa-2, Lalitpur · 9860563506 ·
 sitech.com.np. Bill images are deliberately not committed; this transcription is the record.
 
@@ -371,19 +415,48 @@ sitech.com.np. Bill images are deliberately not committed; this transcription is
 | Mic module | 1 | 150 | Buzzer | 1 | 30 |
 | "Boom/boost module" | 1 | 650 | | | |
 
+**Bill 884 — 11 Sep 2026 (083-5-26) — ₨890**
+
+| Item | Qty | Rate | Item | Qty | Rate |
+|---|---|---|---|---|---|
+| Female header | 4 | 15 | MCP3208 | 1 | 650 |
+| Capacitor (1000 µF) | 2 | 15 | Terminal block, 3-pin | 6 | 20 |
+| Resistor (4k7) | 20 | 1 | Ceramic cap (100 nF) | 10 | 1 |
+
+⚠ **₨15 each is single-row pricing** — a 2×20 dual-row female header is normally ₨50–80.
+These are most likely 1×40 single-row strips, which work: two 1×20 pieces in adjacent
+perfboard rows sit 2.54 mm apart and *are* a 2×20 header. Test that two strips seat
+shoulder-to-shoulder in adjacent rows before soldering — some bodies are wider than 2.54 mm.
+
+**Not stocked at SLT (11 Sep 2026):** CR2032/LIR2032 cell, and the 15-pin camera FFC.
+The cell is available anywhere; the ribbon needs an online order (§16.1).
+
 **What the inventory changes:**
-- **Spares exist** for MQ-7, MQ-135 and DHT22 — a suspect part can be swapped rather than
-  debugged. There is **no spare BMP280** (U7).
-- **Two 10 × 15 cm matrix boards** — cut one to 65 × 70 mm and a whole spare remains.
+- **Spares exist** for MQ-7, MQ-135, DHT22 and — since bill 884 — **MCP3208**. There is still
+  **no spare BMP280** (U7).
+- **Two 10 × 15 cm matrix boards, plus two 5 × 7 cm.** The corrected box takes a 100 × 150
+  board flat, so **neither needs cutting** — build on the blank one and keep the rest.
 - **A multimeter is on hand**, so F1 can be settled by measurement, not inference.
-- **Only 2× 3-pin terminals** — 14 ways are needed (8 + 4 + 2). On the shopping list.
+- ✅ **Terminals settled.** Bill 884 adds 6× 3-pin to the 2 on hand — 24 ways against the 14
+  needed (8 + 4 + 2). Off the shopping list.
 - **Unused and worth fitting:** raindrop ×2 (CH3 free), LDR ×4 (CH4 free).
 - **Unused, no role here:** PIR, mic, buzzer, relays, switches. The *waterproof ultrasonic*
   is interesting later as a **snow-depth or water-level** channel — a Himalayan-transect
   story, not a Lalitpur-rooftop one.
-- ⚠ **U4:** "Resistors ×30" does not say the values. R1–R6 all need **4k7**.
-- ⚠ **U5:** the ₨650 "boom/boost module" is unidentified. If it is a 12 V→5 V buck it may
-  serve the power design directly (§16.5).
+- ✅ **U4 closed by purchase.** Rather than sort 30 unknown resistors, bill 884 buys 20
+  known 4k7 at ₨1 each. Still meter them, and pick *matched pairs* for the MQ dividers —
+  `MQ_DIVIDER_RATIO` (`sensors/config.py:26`) is `(R1+R2)/R2`, so put the measured value in
+  rather than assuming 2.0.
+- ❌ **U5 RE-OPENED 2026-09-13: it is NOT a buck.** The chip reads **`LM2587S`** — a *boost*
+  (step-up) regulator. On the bench with 12 V in, it read 30 V and could not be trimmed below
+  ~11.2 V (input minus a diode drop), which is boost behaviour. The 2026-09-11 "LM2596"
+  identification was wrong and was never measured. **It cannot make 5 V from 9 or 12 V.**
+  So 12 V→5 V is available on the bench already. **Set its output to 5.00 V on the meter
+  before connecting anything** — these ship at arbitrary voltages, often 15–20 V, which would
+  destroy both MQ modules. Honest rating is ~2 A; fit a heatsink.
+- **Power needs no purchase.** A 5 V 2 A adapter feeds the Pi; a 9 V adapter through the
+  LM2596 at 5.00 V feeds the MQ heaters alone, grounds common at the board. That is §8.3's
+  split rail, built from parts on hand.
 
 ### Generated drawings and renders
 
@@ -436,7 +509,7 @@ docs/cad/render.sh                   # every render + template, then the checks 
 
 > **The box is a dry electronics vault. Every environmental sensor lives outside it.**
 
-A sealed 120 mm box on a Kumaripati rooftop in September sun runs 45–55 °C inside. A
+A sealed 170 mm box on a Lalitpur rooftop in September sun runs 45–55 °C inside. A
 DHT22 in there measures *the box*, not the air — that single mistake is what makes most
 DIY weather stations produce numbers that look fine and mean nothing. The MQ heaters
 would also be reading their own exhaust.
@@ -451,7 +524,7 @@ So the unit is three physically separate things, not one box:
    │  SENSOR MAST        │           ┌───┴───┐  ← lid = chassis plate
    │   [ gas pod, MQ×2 ] │           │ Pi+HAT│     camera bolted under it
    │   [ LDR + raindrop ]│           │ buck  │     (110 mm ribbon reaches)
-   └──────────┬──────────┘           │  BOX  │  120 × 120 × 180, LID UP
+   └──────────┬──────────┘           │  BOX  │  130 base / 170 top × 230, LID UP
               │  CAT5e ─────────────▶│       │
               └──────────────────────│ ▣ glands in the SIDE WALL, low
                                      └───┬───┘
@@ -488,7 +561,7 @@ exactly what an all-sky camera wants.
 
 **Build on a removable sled.** A flat plate (3 mm acrylic, ply, or ABS offcut) carrying
 Pi + HAT + terminal strip, which drops into the box as a unit. Assembling inside a
-120 mm box is miserable; assembling on the bench and then inserting is not. This is the
+box is miserable; assembling on the bench and then inserting is not. This is the
 single biggest buildability win available.
 
 ---
@@ -558,6 +631,11 @@ So:
 
 ## 9. Wiring — the protoboard HAT
 
+> 🔧 **At the bench, work from [`BOARD-BUILD.md`](BOARD-BUILD.md)** — the live working doc for
+> this build: the board's own A–Z/A′–J′ × 48→1 coordinates, the orientation anchors, the
+> layout map, the power topology as settled, and the steps with their gates and tick boxes.
+> This section is the reasoning behind it; that one is what you hold the iron next to.
+
 Chosen over hardened jumpers because F2 *is* the joint count. Every dupont pair is a
 crimp plus a friction fit; soldering replaces each with one joint. Off-board sensors keep
 one deliberate, serviceable connection each, via screw terminals.
@@ -576,10 +654,18 @@ So the job is: **cut the inter-module jumper chains out and replace each with a 
 soldered run**, then terminate every *off-board* sensor at a screw terminal so it stays
 serviceable. Nothing that is already a solder joint needs touching.
 
-If the current board turns out to be too big for the sled, cut a fresh 10 × 15 cm matrix
-board down to **~65 × 70 mm** — the `carrier-hat-v1` footprint, so the layout transfers
-when the real PCB arrives — and move the MCP3208 section across. Score with a knife
-against a steel rule and snap. You keep the offcut and a whole spare board.
+**The board does not need cutting.** The corrected box (§5: 170 mm across the top) takes a
+full **100 × 150 mm** board flat in its upper ~115 mm, and a HAT is allowed to overhang the
+Pi. Build on the *blank* 10 × 15 board rather than reworking the old one — stripping 25 wire
+stubs and a field of solder blobs off heat-cycled pads is more work than starting clean.
+
+To recover the MCP3208 from the old board without risking the IC: cut the old board into a
+small island around it (the old board is disposable), then snip the island *between* the two
+pin rows. Each pin is then near-free-standing and lifts with one touch of the iron.
+
+The 65 × 70 `carrier-hat-v1` footprint is therefore **not** matched by this build. The zone
+layout still transfers to the real PCB; the outline does not. That is the right trade for a
+DIY station (§16.7).
 
 ### Pin map (from `sensors/config.py` — the single source of truth)
 
@@ -636,8 +722,8 @@ against a steel rule and snap. You keep the offcut and a whole spare board.
   tape flags on the cardboard version are the reason a rebuild is needed at all.
 
 ### Screw terminals
-You have only **2× 3-pin**. Needed: mast cable (8), soil cable (4), power in (2) —
-**3 blocks / 14 ways** with the cabling scheme below. Add to the shopping list (§13).
+Needed: mast cable (8), soil cable (4), power in (2) — **14 ways**. Bill 884 adds 6× 3-pin
+to the 2 on hand, so **24 ways are available** — settled.
 Sheet 3 ([`pinout.svg`](docs/drawings/pinout.svg)) traces every way to its CAT5e core and
 to the sensor pin it is soldered to at the far end.
 
@@ -864,25 +950,26 @@ Everything not already in the inventory — transcribed in
 
 | Item | Qty | Why | Where |
 |---|---|---|---|
-| Short thick micro-USB cable (≤ 1 m, 20 AWG) | 1 | **Top priority — likely the whole of F1** | any |
-| 5 V / 3 A supply | 1 | if the cable alone doesn't clear the flag. Lives in the junction box, not the vault | Supreme Light Technology, Sanepa-2 |
+| ~~Short thick micro-USB cable~~ | — | ✅ **F1 reported resolved 2026-09-11.** The board, not the Pi, is now the power entry — no micro-USB in the low-voltage path at all | — |
+| 5 V / 3 A supply | *optional* | **not needed:** a 5 V 2 A adapter feeds the Pi and a 9 V adapter through the LM2596 at 5.00 V feeds the MQ heaters alone, grounds common — §8.3's split rail from parts on hand. Buy only to simplify to one supply | SLT |
 | Hook-up wire, 22 AWG stranded, 3–4 colours | 1 spool ea | you have jumper sets but no bulk wire | SLT |
-| Screw terminal blocks, 2- and 3-way | ~6 blocks | only 2× 3-pin on hand | SLT |
-| Resistors 4.7 kΩ | 10 | 1-Wire + MQ dividers — **the 30 on bill 724 have unconfirmed values (U4)** | SLT |
-| Capacitors 100 nF / 1000 µF | 10 / 2 | decoupling + MQ bulk | SLT |
+| ~~Screw terminal blocks~~ | — | ✅ **bought, bill 884** — 6× 3-pin | — |
+| ~~Resistors 4.7 kΩ~~ | — | ✅ **bought, bill 884** — 20 off | — |
+| ~~Capacitors 100 nF / 1000 µF~~ | — | ✅ **bought, bill 884** — 10 / 2 | — |
+| **2×20 female header (or 2× 1×20 strips)** | 1–2 | ✅ **bought, bill 884** — 4 strips. **This was missing from this list and is the one part that blocks the build**: without it, board-to-Pi is a wire bundle, which is fault F2 | SLT |
 | PG7 or PG9 cable glands | 3 | sealed entries — drilled in the box **side wall**, low down, never the lid. **PG7 needs a 12.5 mm hole, PG9 15.2 mm** (the *thread*, not the cable). Rubber grommet + neutral-cure silicone is an acceptable substitute | hardware shop |
 | Small weatherproof junction box | 1 | houses the mains adapter **outside** the instrument box | electrical shop |
-| 12 V→5 V 3 A buck module | 1 | if the adapter is >1 m away. First identify the ₨650 "boom/boost module" on bill 745 — it may already be one (U5) | SLT |
+| ~~12 V→5 V buck module (LM2596)~~ | ~₨150–200 | **Not buying — decided 2026-09-13.** The module on hand is an LM2587S boost (U5). The build runs on 5 V adapters only; see `BOARD-BUILD.md` §2. Revisit only if F1 cannot be closed without it | SLT |
 | Neutral-cure silicone | 1 tube | **neutral-cure, not acetoxy** — acetoxy silicone corrodes copper and pins | hardware shop |
 | M2.5 brass standoffs + screws | 1 set | Pi and buck to the lid underside — **bonded**, not bolted through | SLT |
 | Adhesive zip-tie mounts, 19 mm | 4 | cable strain relief on the lid underside, no holes | SLT / hardware |
-| Concrete paving tile, 300 mm | 1 | the stand: box and hood legs sit on it | hardware shop |
-| 15-pin camera FFC, 300–500 mm | 1 | optional — frees the lid-up constraint entirely (§16.1) | online |
-| Aluminium or corrugated-plastic sheet ~200 mm sq | 1 | the hood plate | hardware shop |
+| Concrete paving tile | 1 | the stand: box and hood legs sit on it. **≈400 mm for the corrected box** — the legs straddle a wider body now | hardware shop |
+| 15-pin camera FFC, 300–500 mm | 1 | frees the lid-up constraint entirely (§16.1). **Not stocked at SLT — order online.** Must be a Pi camera cable: 15-pin, 1.0 mm pitch, contacts on *opposite* faces at the two ends | online |
+| Aluminium or corrugated-plastic sheet | 1 | the hood plate. **≈250 mm sq for the corrected 170 mm box — buy 300 mm and cut to fit** once the CAD is regenerated | hardware shop |
 | Plant-pot saucers ~100 mm | 5 | radiation shield plates | any nursery |
 | — | — | *planter not needed: the roof already has planted vases* | — |
-| CR2032 / LIR2032 | 1 | the DS3231's cell is flat | any |
-| 20 mm PVC pipe + clamps | ~2.5 m | 1.5 m sensor mast + 4 × 220 mm hood legs | hardware shop |
+| **CR2032 / LIR2032** | 1 | the DS3231's cell is flat — **§14 gate 2 is blocked without it.** **Not stocked at SLT**; any general shop has them | any |
+| 20 mm PVC pipe + clamps | **~3 m** | 1.5 m sensor mast + 4 hood legs. **Legs ≈280 mm, not 220** — the box is 230 mm tall, not 180. Buy long and cut | hardware shop |
 | Desiccant sachets | 2–3 | condensation inside the vault | any |
 | Epoxy or potting compound | small | pot the soil probe's exposed top | hardware shop |
 
@@ -1058,14 +1145,14 @@ container is the product, or the container imply the renders are vapour.
 
 | # | Assumption | Where | How to settle it |
 |---|---|---|---|
-| U1 | `BOX_TOP = 130`, `RIM_W = 8`, `RIM_T = 6`, `BOX_WALL = 1.8` | `roofbox.scad` | Calipers. Only base 120 × 120 and height 180 were actually measured |
+| U1 | `RIM_W = 8`, `RIM_T = 6`, `BOX_WALL = 1.8` | `roofbox.scad` | Calipers. **The body is now measured: 130 base / 170 top / 230 tall, internal (§5) — the CAD still has the old 120 × 120 × 180 and must be corrected.** Rim and wall remain estimates |
 | U2 | `FE_RING_D = 23`, `FE_RING_H = 9` — the fisheye's knurled ring | `roofbox.scad` | Calipers, before printing `cam_tower` |
 | U3 | `FE_BACK = 3` — fisheye rear to sensor front | `roofbox.scad` | **Trial and error.** Clip-on phone fisheyes expect 2–4 mm off a phone lens. Print the seat shimmable |
-| U4 | The 30 resistors on bill 724 include **4.7 kΩ** | shopping list | Read the bands / measure. R1–R6 all need 4k7 |
-| U5 | The ₨650 "boom/boost module" on bill 745 is a buck/boost converter | shopping list | Look at it. If it is a 12 V→5 V buck, it may serve directly |
+| ~~U4~~ | ~~The 30 resistors on bill 724 include 4.7 kΩ~~ | — | **Closed 2026-09-11** by buying 20 known 4k7 (bill 884). Still meter them and match the MQ pairs |
+| U5 | The ₨650 "boom/boost module" | — | **Re-opened 2026-09-13: chip is `LM2587S`, a BOOST.** The 2026-09-11 "LM2596 buck" closure was wrong — it was never measured. Buy a real LM2596 |
 | U6 | DHT22 breakout already carries its own pull-up | schematic R2 | Inspect the module before adding a second |
 | U7 | BMP280 is merely disconnected, not dead | §2 | Reconnect and re-scan `0x76`. **There is no spare** — if dead it needs buying |
-| U8 | `PSU`/`BUCK` module dimensions in the CAD | `roofbox.scad` | Measure the actual module |
+| U8 | `PSU`/`BUCK` module dimensions in the CAD | `roofbox.scad` | Measure the actual module — the buck to be bought (U5 — the module on hand is an LM2587S boost) |
 | U9 | Whether the new firmware behaves correctly on real hardware | §4 | **It has not run yet.** Restart the services and watch the log; `gate_check.py` G6 |
 | U10 | Tower ledge / ribbon fold geometry (`TOWER_IX/IY`, `LIP_T`, ledge width) | `roofbox.scad` | Only meaningful once the camera board and fisheye are in hand. Print one, test-fit, adjust |
 | U11 | The buck module is 25 × 45 × 16 and mounts on M2 standoffs | `roofbox.scad` (U8) | Measure the module on bill 745 (U5) — the lid layout moves if it is bigger |
