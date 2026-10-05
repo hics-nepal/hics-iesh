@@ -7,7 +7,9 @@
 # What it does (each one is a HANDOFF §11 item; re-running is harmless):
 #   11.1  dtparam=i2c_arm_baudrate=100000      (was 400000 — the F2 mechanism)
 #   11.2  dtoverlay=i2c-rtc,ds3231            (so /dev/rtc0 exists — F4)
-#   11.3  comment out dtoverlay=ov5647        (camera is out; auto-detect stays — F6)
+#   11.3  comment out dtoverlay=ov5647        (auto-detect alone finds the OV5647 — F6)
+#   F1    arm_freq=1000  dtoverlay=disable-bt (lighter peak load on the 5 V 2 A feed —
+#                                             HANDOFF §0.1 / docs/rooftop-plan.html §E)
 #   also  dtparam=i2c_arm=on  dtparam=spi=on  dtoverlay=w1-gpio   (must be present)
 #
 # It does NOT reboot, and it does NOT touch the RTC: after the reboot do
@@ -44,9 +46,12 @@ ensure_line  "dtparam=i2c_arm_baudrate=100000"          # 11.1
 ensure_line  "dtparam=spi=on"
 ensure_overlay "w1-gpio"
 ensure_overlay "i2c-rtc,ds3231"                          # 11.2
-# 11.3: keep camera_auto_detect, retire the explicit ov5647 overlay
-sed -i -E 's/^(dtoverlay=ov5647.*)$/# \1   # HANDOFF §11.3: camera removed; re-enable when it returns/' "$TMP"
+# 11.3: keep camera_auto_detect, retire the explicit ov5647 overlay (the two conflicted)
+sed -i -E 's/^(dtoverlay=ov5647.*)$/# \1   # HANDOFF §11.3: camera_auto_detect finds it/' "$TMP"
 ensure_line  "camera_auto_detect=1"
+# F1: the as-built 5 V 2 A feed undervolts under sustained 4-core load; trim the peak
+ensure_line  "arm_freq=1000"
+ensure_overlay "disable-bt"
 
 echo "--- diff $CFG ---"
 diff -u "$CFG" "$TMP" || true
@@ -59,4 +64,5 @@ BAK="$CFG.bak-$(date +%Y%m%d-%H%M%S)"
 cp "$CFG" "$BAK"
 cp "$TMP" "$CFG"; rm -f "$TMP"
 echo "applied. backup at $BAK"
-echo "next:  sudo reboot   then   ls /dev/rtc0 && sudo hwclock -w && sudo hwclock -r"
+echo "next:  sudo systemctl disable hciuart   (Bluetooth is off now)"
+echo "       sudo reboot   then   ls /dev/rtc0 && sudo hwclock -w && sudo hwclock -r"

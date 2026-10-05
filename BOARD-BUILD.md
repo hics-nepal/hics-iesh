@@ -9,41 +9,47 @@ decided here that changes a documented fact gets folded back into `HANDOFF.md`.
 
 ## ▶ NEXT SESSION — start here
 
-**Done and verified:** header, three rails + rail gate, MCP3208 block + ADC gate (2026-09-13).
-**Next: the first power-on** (table below). The ADC gate table is kept for reference.
+*Written 2026-10-05 for the next bench session.*
 
-**⛔ First: the ADC gate.** The MCP3208 block was soldered on 2026-09-12 but **never metered** —
-the session ended before the checks. Nothing gets powered until these pass, board off the Pi.
+**The plan changed on 2026-10-05.** Read `HANDOFF.md` §0.1 and
+[`docs/rooftop-plan.html`](docs/rooftop-plan.html) (rev 6) first. The board stays as built.
+What changes is the **terminal plan** (step 7 below replaces the old 14-way mast/soil/power
+plan) and the **dew-heater pads**. ⚠ The Tools Competition abstract is due 13 Oct ET, with
+submission targeted for 10 Oct. Keep station sessions bounded this week.
 
-| Probe | Must read |
-|---|---|
-| `(38,D)` → 3V3 rail | short — pin 16 VDD |
-| `(37,D)` → 3V3 rail | short — pin 15 VREF |
-| `(36,D)` → GND rail | short — pin 14 AGND |
-| `(31,D)` → GND rail | short — pin 9 DGND |
-| **3V3 rail ↔ GND rail** | **must NOT buzz** |
-| `(35,D)` ↔ `(48,I)` · `(34,D)` ↔ `(48,J)` · `(33,D)` ↔ `(48,K)` · `(32,D)` ↔ `(47,I)` | short |
-| each SPI pad ↔ the other three | open |
-| each SPI pad ↔ either rail | open |
-| every column G pad (CH0–CH7) ↔ either rail | open |
+**State, verified:**
+- Header, three rails, MCP3208 and ADC gate all pass (2026-09-12/13).
+- The Pi is powered through GPIO: 5 V 2 A adapter → `(47,W)` → pins 2/4, 1000 µF at the feed.
+- CR2032 reads 3.2 V.
+- **Camera + fisheye work (2026-10-05).**
 
-**Then the first power-on.** Do this before another component goes on — it proves the header,
-the rails and the ADC in one go, while the board is still simple enough to debug.
+**Still open:** F1, which undervolts under sustained 4-core load. Power stays as built (no buck);
+it is managed in software (session step 5).
 
-| Do | Detail |
-|---|---|
-| 1 | **Board onto the Pi.** Micro-USB plugged in **first** — the board roofs that edge |
-| 2 | Power up. **Measure 3V3 rail → GND rail: must be 3.3 V.** Then `(38,D)` → GND: same |
-| 3 | `sudo raspi-config` → Interface Options → **SPI enabled**. Reboot |
-| 4 | `ls /dev/spidev*` — expect `spidev0.0` |
-| 5 | **Read a channel.** Any free one, CH3–CH7. Floating input should give a drifting number, not a hard 0 or 4095 |
-| 6 | Ground that channel to the GND rail by hand → reading should drop to ~0. Touch it to 3V3 → ~4095. **That is the ADC proven end to end** |
+### The session, in order
 
-If step 5 gives a stuck 0 or 4095, the fault is almost certainly **MOSI and MISO swapped** —
-`Din` at `(33,D)` takes MOSI from `(48,K)`, `Dout` at `(34,D)` takes MISO to `(48,J)`.
+| # | Do | Gate before moving on |
+|---|---|---|
+| 1 | **Paper-strip ribbon test** (10 min). Pi + board against the box's inside wall, **USB/Ethernet end up**, under the lid. Route a 110 mm × 16 mm paper strip from the camera connector, under the board, out at the A-edge, past the USB jacks, to the lid. Mark the tower position | Reaches with ≥5 mm spare → keep the 110 mm ribbon. Otherwise → the 30 cm ribbon (Himalayan Solution). **Doesn't block soldering** |
+| 2 | **1d — meter the passives.** 4.7 kΩ: two matched pairs (R3/R4, R5/R6) plus R1, R2 and the LDR divider. From bill 724's unlabelled 30: find **8 × 220–330 Ω** for the dew heater | Values written on the bag |
+| 3 | **Step 6 components** (list below) | Board OFF the Pi. The three rails still open to each other; every new net buzzed against sheet 1; no CH pad shorted to a rail |
+| 4 | **Step 7 terminals**: 20 ways from the new map below. **Label every way in pen** | Each way buzzed to its destination pad |
+| 5 | **On the Pi.** `sudo scripts/pi_config.sh --dry-run` → apply → `sudo systemctl disable hciuart` → reboot. Fit the CR2032 → `sudo hwclock -w && sudo hwclock -r`. Then `sudo systemctl restart hics-core hics-web` and `python3 scripts/gate_check.py` | `/dev/rtc0` exists, the clock reads true, and the log shows the `\| NULL:` note |
+| 6 | **Power under camera load**: `rpicam-vid -t 0 -n --width 640 --height 480 --framerate 5 -o /dev/null` running, check `vcgencmd get_throttled` over an hour | `0x0`. If not: swap the two 5 V sources → retest → the sky pipeline by day only. The LM2596 is the last rung, not bought |
+| 7 | **Sensors one at a time** (step 8): I2C trio → soil → DS18B20 → DHT22 → MQ pair → raindrop (CH3) → LDR (CH4). `python3 tests/test_all.py --skip camera` after each | Each one reads plausibly before the next goes on |
 
-Then, still outstanding and none of it blocking: **1d** meter the passives and set aside two
-matched 4.7 kΩ pairs · **1e** buy a real LM2596 (the module on hand is an LM2587S *boost*) and trim it · **1f** test the CR2032.
+**On the bench:** meter, iron, 4.7 kΩ, 220–330 Ω, 1000 µF, 8 × 3-way terminals, the plastic
+box (for step 1), paper and scissors, indelible pen, CAT5e offcut.
+
+### Firmware for Claude to do in parallel
+Steps 1–4 are hands-on. These need no hardware and can be written meanwhile:
+- `sensors/config.py`: `CH_RAIN = 3`, `CH_LDR = 4`. `core_dash.py`: read both through the
+  `ChannelSet` health gate. Decide new DB columns vs the ingest's `module_data` blob, which
+  is the extension point (HANDOFF §1.4).
+- Health channels: Pi CPU temperature and `get_throttled` bits, logged with each row, so
+  readings taken under undervoltage are flagged rather than silently trusted.
+- `INTERNET_IFACE` (HANDOFF §11.4): the 3B+ has only `wlan0`.
+- Tests for all of the above, in `tests/test_health.py` style.
 
 ---
 
@@ -117,6 +123,12 @@ pin 1 is at its microSD end. Counter-intuitive; write it on the board.
 ---
 
 ## 2. Power topology — settled 2026-09-11
+
+> ⚠ **As of 2026-10-05 the diagram below is history, not the plan.** There is no LM2596 and
+> the 9 V adapter has no role. **Pi:** the 5 V 2 A barrel adapter → `(47,W)` → pins 2/4, with
+> 1000 µF at the feed (as built 2026-09-13). **Heater rail 41:** the *second* 5 V source (the
+> USB charger with its lead cut short) via the HTR IN terminal, grounds joined at rail 45.
+> The split-rail principle is unchanged.
 
 Both adapters on hand are used, as two rails with a common ground. This is §8.3 of
 `HANDOFF.md` built from parts already owned.
@@ -270,7 +282,7 @@ Pin numbers run **T → A** (pin 1 at T, pin 39/40 at A):
 |---|---|---|---|
 | +3.3 V | 1, 17 | **(48, T)** + **(48, L)** | rail at number 43 |
 | GND | 6, 20 | **(47, R)** + **(47, K)** | rail at number 45 - at least TWO |
-| +5 V | 2, 4 | **(47, T)** + **(47, S)** | **LEAVE UNCONNECTED** - see section 2 |
+| +5 V | 2, 4 | **(47, T)** + **(47, S)** | **Pi feed** from the 5 V 2 A adapter via `(47,W)` (2026-09-13). **Never** linked to rail 41 — see section 2 |
 | SDA | 3 | **(48, S)** | I2C breakout |
 | SCL | 5 | **(48, R)** | I2C breakout |
 | 1-WIRE | 7 | **(48, Q)** | DS18B20 + R1 to 3V3 |
@@ -337,8 +349,8 @@ across to `(38,D)`. It sits ~3 mm from VDD and AGND, which is the only placement
 - [x] **1c** Oval edge pads metered — isolated, not rails
 - [ ] **1d** Passives metered: resistors ≈4.7 kΩ (two **matched pairs** set aside for the MQ
       dividers), ceramics marked `104`, electrolytics 1000 µF — note the polarity stripe
-- [ ] **1e** LM2596 trimmed with nothing connected to its output — **module on hand is an
-      LM2587S boost (2026-09-13); a real LM2596 must be bought first**
+- [x] ~~**1e** LM2596 trimmed~~ — **not needed: power stays as built (decided 2026-10-05).**
+      The LM2596 is only the last rung of the F1 fallback ladder (session step 6)
 - [x] **1f** CR2032 reads **≥3.0 V** unloaded — **3.2 V, 2026-09-13.** Safe on the DS3231 module
       because it runs at 3.3 V: the module's charging path (diode + resistor from VCC) then sits
       below the cell voltage, so a non-rechargeable CR2032 is not charged
@@ -410,11 +422,38 @@ A shorted rail found with a meter costs nothing. Found after power-up it costs t
       2026-09-12, **SPI wires fitted and ADC gate PASSED 2026-09-13**
 - [ ] R1 (1-Wire → 3V3), R2 (DHT22 → 3V3 — **check the module isn't already fitted with one**, U6)
 - [ ] R3–R6 MQ dividers, matched pairs; put the measured `(R1+R2)/R2` into `sensors/config.py:26`
-- [ ] C2 1000 µF on the 5 V rail, polarity checked
-- [ ] Every net buzzed against sheet 1 (`docs/drawings/schematic.svg`)
+- [ ] C2 1000 µF on the 5 V rail (41, the heater rail), polarity checked
+- [ ] **LDR divider:** 4.7 kΩ from CH4 `(34,G)` to the GND rail (the LDR itself goes from
+      3V3 to CH4 via its terminal). Bright = low LDR resistance = high reading
+- [ ] **Raindrop:** its terminal's AO way straight to CH3 `(35,G)`. No divider: the module runs on 3.3 V
+- [ ] Every net buzzed against sheet 1 (`docs/drawings/schematic.svg`). Sheet 1 predates
+      CH3/CH4 and the new cable map; the table below is the truth until it is regenerated
 
-### Step 7 — terminals
-- [ ] 14 ways fitted, **numbers 6 → 3**, along the number-1 edge
+### Step 7 — terminals (new map, 2026-10-05: replaces the 14-way mast/soil/power plan)
+Eight 3-way blocks = 24 ways, **20 used**. Placement as before: numbers 6 → 3, along the
+number-1 edge (adjust if the paper test in session step 1 wants another edge).
+
+| Block | Way | Carries | Board side |
+|---|---|---|---|
+| **SEN** (sensor CAT5e, ≈0.6 m) | 1 | DHT22 VCC | rail 43 (3V3) |
+| | 2 | DHT22 GND | rail 45 |
+| | 3 | DHT22 DATA | `(47,M)` GPIO23, + R2 to 3V3 if the module lacks one (U6) |
+| | 4 | MQ heater +5 V | rail 41 |
+| | 5 | MQ heater GND | rail 45 |
+| | 6 | MQ-7 AOUT | R3/R4 divider → CH0 `(38,G)` |
+| | 7 | MQ-135 AOUT | R5/R6 divider → CH1 `(37,G)` |
+| **SOIL** (CAT5e, ≈1 m) | 1 | DS18B20 red + probe VCC | rail 43 |
+| | 2 | DS18B20 black + probe GND | rail 45 |
+| | 3 | DS18B20 yellow | `(48,Q)` GPIO4, + R1 4.7 kΩ to 3V3 |
+| | 4 | soil AOUT | CH2 `(36,G)` |
+| **RAIN** | 1 / 2 / 3 | VCC / GND / AO | rail 43 / rail 45 / CH3 `(35,G)` |
+| **LDR** | 1 / 2 | LDR top / LDR bottom | rail 43 / CH4 `(34,G)` |
+| **HTR IN** | 1 / 2 | +5 V / GND from the **second** 5 V source | rail 41 / rail 45 |
+| **DEW** | 1 / 2 | to 8 × 220 Ω in parallel at the lens ring (≈0.9 W) | rail 41 / rail 45 |
+
+Spare: SEN 8–9, SOIL 5–6. The Pi's own 5 V stays on its direct `(47,W)` feed, not a terminal.
+
+- [ ] 20 ways fitted and buzzed to their pads
 - [ ] **Every way labelled on the board in indelible pen.** The masking-tape flags on the
       demo build are why this rebuild exists
 
@@ -513,15 +552,14 @@ A shorted rail found with a meter costs nothing. Found after power-up it costs t
 
 ## 6. Open
 
-- **Power accepted as-is for bench work (2026-09-13, user decision):** 5 V 2 A adapter via GPIO + 1000 µF. Idle clean, sustained load still undervolts. **Deferred:** trim the Pi's load in software — `arm_freq` cap, HDMI/Bluetooth/Wi-Fi off when unused, unused services disabled — and optionally try the 5 V 2 A mobile charger. Re-check `vcgencmd get_throttled` before the 24 h gate (F5).
+- **Power as built, for deployment too (2026-10-05, user decision):** 5 V 2 A adapter via GPIO + 1000 µF. Idle clean, sustained load still undervolts. **Software trims now in `scripts/pi_config.sh`:** `arm_freq=1000` and `dtoverlay=disable-bt` (then `systemctl disable hciuart`). The fallback ladder is in the session block, step 6. Re-check `vcgencmd get_throttled` before the 24 h gate (F5).
 - **No buck converter, by decision (2026-09-13).** Module on hand is an LM2587S boost; not buying an LM2596.
 - **F1 undervoltage still present** on the 5 V 2 A adapter via GPIO (`0x50005`).
 - **`docs/drawings/perfboard.svg` is stale** — generated for 57 × 37 ascending columns. This
   board is 48 × 36 descending. Regenerate `scripts/gen_drawings.py` to match §3.
-- **The CAD is stale** — `roofbox.scad` and `roofbox_check.py` still model the old
-  120 × 120 × 180 box. See the warning in `HANDOFF.md` §5.
-- **No camera FFC** (not stocked at SLT), so the 110 mm ribbon still forces lid-up (§16.1).
+- **The CAD is stale.** `roofbox.scad` and `roofbox_check.py` still model the old
+  120 × 120 × 180 box *and* a 65 × 70 HAT; the ribbon check is invalid for this board. See HANDOFF §0.1.
+- **Camera ribbon:** keeping the 110 mm one (2026-10-05). The only reach is Pi-on-wall, USB end up (HANDOFF §0.1). A 30 cm ribbon is in stock at Himalayan Solution if the paper test fails.
 - **Passives not yet metered** (1d) — resistors need two *matched pairs* picked out for the
   MQ dividers, and the measured `(R1+R2)/R2` written into `sensors/config.py:26`.
-- **LM2596 not yet trimmed to 5.00 V** (1e). It must be set with nothing connected to its
-  output — these ship at 15–20 V and would destroy both MQ modules.
+- ~~LM2596 not yet trimmed~~ — not needed; power stays as built (2026-10-05).

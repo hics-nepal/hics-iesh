@@ -87,6 +87,10 @@ an open-bar top, and **crows and monkeys** on the roof. The plan built on them i
   09:44 NPT; see `hics-docs/funding/tools-competition/2027/APPLICATION-PLAN.md`) comes first.
   That entry keeps IESH outside its claims, so station work after submission. Add a dew heater
   from day one: eight 220 Ω resistors on the heater rail.
+- **Next bench session:** [`BOARD-BUILD.md`](BOARD-BUILD.md) → "▶ NEXT SESSION". It covers the
+  paper-strip ribbon test, step 6 components, the new 20-way terminal map, `pi_config.sh`
+  (now with the F1 trims), the power check under camera load, and the firmware tasks
+  (CH3/CH4, health channels).
 
 ---
 
